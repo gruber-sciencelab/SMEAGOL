@@ -1,0 +1,112 @@
+import tensorflow as tf
+import keras
+import pandas as pd
+import numpy as np
+
+
+def predict(encoding, model, threshold, score=False):
+    scores = None
+    predictions = model.predict(encoding.one_hot)
+    thresholds = threshold*model.max_scores
+    thresholded = np.where(predictions > thresholds)
+    if score:
+        scores = predictions[thresholded]
+    return thresholded, scores
+
+
+def locate_sites(encoding, model, thresholded, scores=None):
+    seq_idx = thresholded[0]
+    pos_idx = thresholded[1]
+    pwm_idx = thresholded[2]
+    output = {}
+    sites = pd.DataFrame({'id': encoding.ids[seq_idx],
+                              'name':encoding.names[seq_idx],
+                              'sense':encoding.senses[seq_idx],
+                              'start': pos_idx,
+                              'Matrix_id': model.Matrix_ids[pwm_idx]})
+    sites['width'] = model.widths[pwm_idx]
+    sites['end'] = sites['start'] + sites['width']
+    if scores is not None:
+        sites['score'] = scores
+        sites['max_score'] = model.max_scores[pwm_idx]
+        sites['frac_score'] = sites['score']/sites['max_score']
+    return sites
+
+
+def bin_sites_by_score(encoding, model, thresholded, scores, bins):
+    seq_idx = thresholded[0]
+    pwm_idx = thresholded[2]
+    frac_scores = scores/model.max_scores[pwm_idx]
+    result = pd.crosstab(index = model.Matrix_ids[pwm_idx], 
+                         columns = [encoding.ids[seq_idx], 
+                                    encoding.names[seq_idx], 
+                                    encoding.senses[seq_idx], 
+                                    bins[np.digitize(frac_scores, bins)-1]])
+    result = result.melt(ignore_index=False).reset_index()
+    result.columns = ['Matrix_id', 'id', 'name', 'sense', 'bin', 'num']
+    return result
+
+                       
+def count_sites(encoding, model, thresholded):
+    seq_idx = thresholded[0]
+    pwm_idx = thresholded[2]
+    result = pd.crosstab(index = model.Matrix_ids[pwm_idx], 
+                         columns = [encoding.ids[seq_idx], 
+                                    encoding.names[seq_idx], 
+                                    encoding.senses[seq_idx]])
+    result = result.melt(ignore_index=False).reset_index()
+    result.columns = ['Matrix_id', 'id', 'name', 'sense', 'num']
+    return result
+
+
+def find_sites_seq(encoding, model, threshold, bin_width=0.05, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+    """
+    Function to predict binding sites on sequence(s).
+    
+    Inputs:
+        encoding: class MultiSeqEncoding or SeqEncoding
+        model: class PWMModel
+        threshold: threshold (from 0 to 1) to identify binding sites
+        bin_width: width of bin to produce binned counts of binding sites. Only used with binned_counts=True.
+        sites: output binding site locations
+        binned_counts: output binned counts of binding sites per PWM
+        total_counts: output total count of binding sites per PWM
+        stats: output mean and standard deviation of the count of binding sites per PWM
+    
+    Returns: 
+        output: dictionary containing specified outputs.
+    """
+    if binned_counts:
+        score = True
+    if sites:
+        score = True
+    thresholded, scores = predict(encoding, model, threshold, score)
+    output = {}
+    if sites:
+        output['sites'] = locate_sites(encoding, model, thresholded, scores)
+    if binned_counts:
+        assert (bin_width <= 1.0) and (bin_width >= 0.0)
+        bins = np.arange(threshold, 1.0, bin_width)
+        output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, bins)
+    if (total_counts or stats):
+        total = count_sites(encoding, model, thresholded)
+    if total_counts:
+        output['total_counts'] = total
+    if stats:
+        stats = total.groupby(['Matrix_id', 'sense']).agg([len, np.mean, np.std]).reset_index()
+        stats.columns = ['Matrix_id', 'sense', 'len', 'avg', 'sd'] 
+        output['stats'] = stats
+
+    return output
+
+
+def find_sites_multiseq(encodings, model, threshold, bin_width=0.05, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+    """
+    Function to predict binding site on class MultiSeqEncoding.
+    
+    """
+    output_per_seq = [find_sites_seq(seq, model, threshold, bin_width, sites, binned_counts, total_counts, stats, score) for seq in encodings.seqs]
+    output = {}
+    for key in output_per_seq[0].keys():
+        output[key] = pd.concat([x[key] for x in output_per_seq]).reset_index(drop=True)
+    return output
