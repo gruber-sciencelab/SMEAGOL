@@ -59,15 +59,14 @@ def count_sites(encoding, model, thresholded):
     return result
 
 
-def find_sites_seq(encoding, model, threshold, bin_width=0.05, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
     """
     Function to predict binding sites on sequence(s).
     
     Inputs:
         encoding: class MultiSeqEncoding or SeqEncoding
         model: class PWMModel
-        threshold: threshold (from 0 to 1) to identify binding sites
-        bin_width: width of bin to produce binned counts of binding sites. Only used with binned_counts=True.
+        threshold: threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
         sites: output binding site locations
         binned_counts: output binned counts of binding sites per PWM
         total_counts: output total count of binding sites per PWM
@@ -80,14 +79,16 @@ def find_sites_seq(encoding, model, threshold, bin_width=0.05, sites=False, binn
         score = True
     if sites:
         score = True
-    thresholded, scores = predict(encoding, model, threshold, score)
+    if binned_counts:
+        assert type(threshold) == np.ndarray
+        thresholded, scores = predict(encoding, model, min(threshold), score)
+    else:
+        thresholded, scores = predict(encoding, model, threshold, score)
     output = {}
     if sites:
         output['sites'] = locate_sites(encoding, model, thresholded, scores)
     if binned_counts:
-        assert (bin_width <= 1.0) and (bin_width >= 0.0)
-        bins = np.arange(threshold, 1.0, bin_width)
-        output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, bins)
+        output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     if (total_counts or stats):
         total = count_sites(encoding, model, thresholded)
     if total_counts:
@@ -100,12 +101,12 @@ def find_sites_seq(encoding, model, threshold, bin_width=0.05, sites=False, binn
     return output
 
 
-def find_sites_multiseq(encodings, model, threshold, bin_width=0.05, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+def find_sites_multiseq(encodings, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
     """
     Function to predict binding site on class MultiSeqEncoding.
     
     """
-    output_per_seq = [find_sites_seq(seq, model, threshold, bin_width, sites, binned_counts, total_counts, stats, score) for seq in encodings.seqs]
+    output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score) for seq in encodings.seqs]
     output = {}
     for key in output_per_seq[0].keys():
         output[key] = pd.concat([x[key] for x in output_per_seq]).reset_index(drop=True)

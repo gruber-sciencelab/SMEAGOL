@@ -19,10 +19,6 @@ from mimetypes import guess_type
 from functools import partial
 from .fastaio import write_fasta
 
-# Stats imports
-import scipy.stats as stats
-import statsmodels.stats.multitest as multitest
-
 
 # PPM/PWM analysis
 
@@ -129,28 +125,3 @@ def shuffle_records(records, simN, simK, out_file=None):
     if out_file is not None:
         write_fasta(shuf_records, out_file)
     return shuf_records
-
-
-def enrich(real_counts, shuf_stats):
-    """
-    Function to calculate enrichment of binding sites in real vs. shuffled genomes
-    
-    Inputs:
-        real_counts: counts of binding sites in real genome
-        shuf_stats: statistics for binding sites across multiple shuffled genomes
-        
-    Returns:
-        enr: DF containing FDR-corrected p-values for enrichment of each PWM.  
-    """
-    enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'])
-    enr = enr[(enr.num > 0) | (enr.avg > 0)].copy().reset_index(drop=True)
-    enr['z'] = (enr.num - enr.avg)/enr.sd
-    enr['z'] = enr.z.replace([-np.inf], -100)
-    enr['p'] = stats.norm.sf(abs(enr.z))*2
-    enr_full = pd.DataFrame()
-    for sense in pd.unique(enr.sense):
-        enr_x = enr[enr.sense == sense].copy()
-        enr_x['fdr'] = multitest.fdrcorrection(enr_x.p)[1]
-        enr_full = pd.concat([enr_full, enr_x])
-    enr_full.sort_values(['sense', 'fdr'], inplace=True)
-    return enr_full
