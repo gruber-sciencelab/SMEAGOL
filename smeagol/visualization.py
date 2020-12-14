@@ -52,3 +52,18 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
         if file_path is not None:
             plt.savefig(file_path, facecolor='white')
 
+
+def plot_background(shuf_counts, real_counts, Matrix_ids, file_path=None, figsize=(14,7)):
+    fig, axs = plt.subplots(nrows=int(np.ceil(len(Matrix_ids)/5)), ncols=5, figsize=figsize)
+    axs = axs.flatten()
+    for i, matrix in enumerate(Matrix_ids):
+        shuf_nums = shuf_counts[(shuf_counts.Matrix_id==matrix)].num
+        real_num = real_counts[(real_counts.Matrix_id==matrix)].num.values
+        axs[i].hist(shuf_nums)
+        axs[i].axvline(real_num, color='red')
+        axs[i].set_title(matrix)
+
+    plt.tight_layout()
+    plt.show()
+    if file_path is not None:
+        plt.savefig(file_path, facecolor='white')
