@@ -101,13 +101,38 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
     return output
 
 
-def find_sites_multiseq(encodings, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+def find_sites_multiseq(encodings, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, combine_seqs=False, sep_ids=False):
     """
     Function to predict binding site on class MultiSeqEncoding.
     
     """
-    output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score) for seq in encodings.seqs]
+    # Find binding sites
+    if combine_seqs and stats:
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score=score) for seq in encodings.seqs]
+    else:
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score) for seq in encodings.seqs]
+    # Concatenate
     output = {}
     for key in output_per_seq[0].keys():
         output[key] = pd.concat([x[key] for x in output_per_seq]).reset_index(drop=True)
+    # Combine
+    if combine_seqs:
+        if sep_ids:
+            if 'total_counts' in output.keys():
+                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'sense', 'id']).num.sum().reset_index()
+            if 'binned_counts' in output.keys():
+                output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'sense', 'bin', 'id']).num.sum().reset_index()
+        else:
+            if 'total_counts' in output.keys():
+                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'sense']).num.sum().reset_index()
+            if 'binned_counts' in output.keys():
+                output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'sense', 'bin']).num.sum().reset_index()
+        # Calculate stats
+        if stats:
+            stats = output['total_counts'].groupby(['Matrix_id', 'sense']).agg([len, np.mean, np.std]).reset_index()
+            stats.columns = ['Matrix_id', 'sense', 'len', 'avg', 'sd'] 
+            output['stats'] = stats 
+            if not total_counts:
+                del output['total_counts']
+    
     return output

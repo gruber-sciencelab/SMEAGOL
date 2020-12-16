@@ -14,7 +14,8 @@ from .inference import find_sites_multiseq
 from .utils import shuffle_records
 
 
-def enrich_over_shuffled(real_counts, shuf_stats):
+
+def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=None):
     """
     Function to calculate enrichment of binding sites in real vs. shuffled genomes
     
@@ -27,9 +28,13 @@ def enrich_over_shuffled(real_counts, shuf_stats):
     """
     enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'])
     enr = enr[(enr.num > 0) | (enr.avg > 0)].copy().reset_index(drop=True)
-    enr['z'] = (enr.num - enr.avg)/enr.sd
-    enr['z'] = enr.z.replace([-np.inf], -100)
-    enr['p'] = stats.norm.sf(abs(enr.z))*2
+    if background == 'normal':
+        enr['z'] = (enr.num - enr.avg)/enr.sd
+        enr['z'] = enr.z.replace([-np.inf], -100)
+        enr['p'] = stats.norm.sf(abs(enr.z))*2
+    elif background == 'binomial':
+        assert seqlen is not None
+        enr['p'] = enr.apply(lambda x:stats.binom(seqlen, x['avg']/seqlen).pmf(x['num']), axis=1)
     enr_full = pd.DataFrame()
     for sense in pd.unique(enr.sense):
         enr_x = enr[enr.sense == sense].copy()
@@ -39,14 +44,14 @@ def enrich_over_shuffled(real_counts, shuf_stats):
     return enr_full
 
 
-def enrich_in_genome(genome, model, simN, simK, rcomp, sense, threshold, verbose=False):
+def enrich_in_genome(genome, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True):
     """
     Function to calculate enrichment of PWMs in a sequence relative to a shuffled background.
     """
     # Encode genome
     encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=sense)
     # Find sites on real genome
-    real_preds = find_sites_multiseq(encoded_genome, model, threshold, sites=True, total_counts=True)
+    real_preds = find_sites_multiseq(encoded_genome, model, threshold, sites=True, total_counts=True, combine_seqs=combine_seqs)
     real_sites = real_preds['sites']
     real_counts = real_preds['total_counts']
     # Shuffle genome
@@ -55,13 +60,18 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, sense, threshold, verbose
     encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
     if verbose:
-        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=True, stats=True)
+        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=True, stats=True, combine_seqs=combine_seqs, sep_ids=True)
         shuf_counts = shuf_preds['total_counts']
     else:
-        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, stats=True)
+        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, stats=True, 
+                                         combine_seqs=combine_seqs, sep_ids=True)
     shuf_stats = shuf_preds['stats']
     # Calculate binding site enrichment
-    enr = enrich_over_shuffled(real_counts, shuf_stats)
+    if background == 'normal':
+        enr = enrich_over_shuffled(real_counts, shuf_stats, background=background)
+    elif background == 'binomial':
+        seqlen = sum([len(x) for x in genome])
+        enr = enrich_over_shuffled(real_counts, shuf_stats, background=background, seqlen=seqlen)
     results = {'enrichment':enr, 'real_sites':real_sites, 'real_counts':real_counts, 'shuf_stats': shuf_stats}
     if verbose:
         results['shuf_counts'] = shuf_counts

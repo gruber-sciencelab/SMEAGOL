@@ -71,7 +71,7 @@ class SeqEncoding:
     def __init__(self, records, rcomp=False, sense=None):
         self.reverse_complemented = False
         if len(records) > 1:
-            self.check_equal_widths(records)
+            self.check_equal_lens(records)
         self.one_hot = np.concatenate([one_hot_encode(record, rcomp=False) for record in records], axis=0)
         self.ids = np.array([record.id for record in records])
         self.names = np.array([record.name for record in records])
@@ -83,9 +83,9 @@ class SeqEncoding:
             self.names = np.tile(self.names, 2)
             self.senses = np.append(self.senses, [sense_complement_dict[sense] for sense in self.senses])
             self.reverse_complemented = True
-    def check_equal_widths(self, records):
-        widths = [len(record.seq) for record in records]
-        if len(np.unique(widths)) != 1:
+    def check_equal_lens(self, records):
+        lens = [len(record.seq) for record in records]
+        if len(np.unique(lens)) != 1:
             raise ValueError("Cannot encode - sequences have unequal length!")
 
     

@@ -53,17 +53,45 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
             plt.savefig(file_path, facecolor='white')
 
 
-def plot_background(shuf_counts, real_counts, Matrix_ids, file_path=None, figsize=(14,7)):
-    fig, axs = plt.subplots(nrows=int(np.ceil(len(Matrix_ids)/5)), ncols=5, figsize=figsize)
+def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, background='binomial', figsize=(17,8), ncols=4, file_path=None):
+    """
+    Function to plot the distribution of background counts.
+    """
+    ncols = min(len(Matrix_ids), ncols)
+    nrows=int(np.ceil(len(Matrix_ids)/ncols))
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
     axs = axs.flatten()
     for i, matrix in enumerate(Matrix_ids):
+        # Get shuffled counts
         shuf_nums = shuf_counts[(shuf_counts.Matrix_id==matrix)].num
+        
+        # Create count table
+        cttable = shuf_nums.value_counts().sort_index()/len(shuf_nums)
+        
+        # Plot count table
+        axs[i].bar(cttable.index, cttable)
+        
+        if background == 'binomial':
+            binom_p = shuf_nums.mean()/genome_len
+            preds = scipy.stats.binom(genome_len, binom_p).pmf(cttable.index)
+            axs[i].plot(cttable.index, preds, c='orange')
+        elif background == 'normal':
+            preds = scipy.stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
+            axs[i].plot(cttable.index, preds, c='orange')
+        if background == 'both':
+            binom_p = shuf_nums.mean()/genome_len
+            binom_preds = scipy.stats.binom(genome_len, binom_p).pmf(cttable.index)
+            norm_preds = scipy.stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
+            axs[i].plot(cttable.index, binom_preds, c='orange')
+            axs[i].plot(cttable.index, norm_preds, c='green')
+        
+        # Add real counts
         real_num = real_counts[(real_counts.Matrix_id==matrix)].num.values
-        axs[i].hist(shuf_nums)
         axs[i].axvline(real_num, color='red')
         axs[i].set_title(matrix)
 
     plt.tight_layout()
-    plt.show()
     if file_path is not None:
         plt.savefig(file_path, facecolor='white')
+    else:
+        plt.show()
