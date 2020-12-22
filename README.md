@@ -32,3 +32,8 @@ Smeagol contains the following modules:
 - smeagol.fastaio: functions to read and write FASTA files
 - smeagol.inference: functions to score binding sites 
 - smeagol.enrich: functions to calculate binding site enrichment
+
+
+## Tutorials
+
+See the [vignette](vignette_1.ipynb) for an example workflow using SMEAGOL.
