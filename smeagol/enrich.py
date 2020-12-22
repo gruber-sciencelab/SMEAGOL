@@ -26,30 +26,51 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
     Returns:
         enr: DF containing FDR-corrected p-values for enrichment of each PWM.  
     """
-    enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'])
+    # Compare counts on real and shuffled genomes
+    if 'name' in shuf_stats.columns:
+        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense', 'name'])
+    else:
+        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'])
     enr = enr[(enr.num > 0) | (enr.avg > 0)].copy().reset_index(drop=True)
-    if background == 'normal':
+    # Calculate normal z-score
+    if (background == 'normal') or (background == 'both'):
         enr['z'] = (enr.num - enr.avg)/enr.sd
         enr['z'] = enr.z.replace([-np.inf], -100)
+    if (background == 'binomial') or (background == 'both'):
+        assert seqlen is not None
+    # Calculate p-value
+    if background == 'normal':
         enr['p'] = stats.norm.sf(abs(enr.z))*2
     elif background == 'binomial':
-        assert seqlen is not None
-        enr['p'] = enr.apply(lambda x:stats.binom(seqlen, x['avg']/seqlen).pmf(x['num']), axis=1)
+        enr['p'] = enr.apply(lambda x:stats.binom_test(x['num'], seqlen, x['avg']/seqlen, alternative='two-sided'), axis=1)
+    elif background == 'both':
+        enr['pnorm'] = stats.norm.sf(abs(enr.z))*2
+        enr['pbinom'] = enr.apply(lambda x:stats.binom_test(x['num'], seqlen, x['avg']/seqlen, alternative='two-sided'), axis=1)
     enr_full = pd.DataFrame()
+    # FDR correction per molecule
     for sense in pd.unique(enr.sense):
         enr_x = enr[enr.sense == sense].copy()
-        enr_x['fdr'] = multitest.fdrcorrection(enr_x.p)[1]
+        if (background == 'normal') or (background == 'binomial'):
+            enr_x['fdr'] = multitest.fdrcorrection(enr_x.p)[1]
+        elif background == 'both':
+            enr_x['fdr_norm'] = multitest.fdrcorrection(enr_x.pnorm)[1]  
+            enr_x['fdr_binom'] = multitest.fdrcorrection(enr_x.pbinom)[1]
         enr_full = pd.concat([enr_full, enr_x])
-    enr_full.sort_values(['sense', 'fdr'], inplace=True)
+    # Sort and index final results
+    if (background == 'normal') or (background == 'binomial'):
+        enr_full.sort_values(['sense', 'fdr'], inplace=True)
+    elif background == 'both':
+        enr_full.sort_values(['sense', 'fdr_binom'], inplace=True)
+    enr_full.reset_index(inplace=True, drop=True)
     return enr_full
 
 
-def enrich_in_genome(genome, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True):
+def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, background='binomial', verbose=False, combine_seqs=True):
     """
     Function to calculate enrichment of PWMs in a sequence relative to a shuffled background.
     """
     # Encode genome
-    encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=sense)
+    encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=genome_sense)
     # Find sites on real genome
     real_preds = find_sites_multiseq(encoded_genome, model, threshold, sites=True, total_counts=True, combine_seqs=combine_seqs)
     real_sites = real_preds['sites']
@@ -57,7 +78,7 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, sense, threshold, backgro
     # Shuffle genome
     shuf_genome = shuffle_records(genome, simN, simK)
     # Encode shuffled genomes
-    encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=sense, rcomp=rcomp, group_by_name=True)
+    encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=genome_sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
     if verbose:
         shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=True, stats=True, combine_seqs=combine_seqs, sep_ids=True)
@@ -69,12 +90,13 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, sense, threshold, backgro
     # Calculate binding site enrichment
     if background == 'normal':
         enr = enrich_over_shuffled(real_counts, shuf_stats, background=background)
-    elif background == 'binomial':
+    elif background == 'binomial' or background == 'both':
         seqlen = sum([len(x) for x in genome])
         enr = enrich_over_shuffled(real_counts, shuf_stats, background=background, seqlen=seqlen)
     results = {'enrichment':enr, 'real_sites':real_sites, 'real_counts':real_counts, 'shuf_stats': shuf_stats}
     if verbose:
         results['shuf_counts'] = shuf_counts
+        results['shuf_genome'] = shuf_genome
     return results
 
 
@@ -82,31 +104,29 @@ def enrich_in_window(real_sites, genome, sel_id, sel_start, sel_end):
     """
     Function to calculate enrichment of PWMs in subsequence relative to total sequence.
     """
+    # Calculate total number of successes and failures over genome
+    tot_len = sum([len(x) for x in genome])
+    tot_count = len(real_sites)
+    tot_neg = tot_len - tot_count
     # Calculate number of successes and failures in selected region
-    sel_counts = real_sites.loc[((real_sites.id==sel_id) & (real_sites.start>=sel_start) & (real_sites.end<=sel_end))]
-    if len(sel_counts) > 0:
-        sel_counts = sel_counts[['Matrix_id', 'sense']].value_counts().reset_index()
-        sel_counts.columns = ['Matrix_id', 'sense', 'count']
-        # Calculate total number of successes and failures over genome
-        tot_counts = real_sites[['Matrix_id', 'sense']].value_counts().reset_index()
-        tot_counts.columns = ['Matrix_id', 'sense', 'count_total']
-        tot_len = sum([len(x) for x in genome])
-        tot_counts['neg_total'] = tot_len - tot_counts['count_total']
-        # Make combined dataframe
-        sel_counts['id'] = sel_id
-        sel_counts['start'] = sel_start
-        sel_counts['end'] = sel_end
-        sel_counts['neg'] = (sel_end - sel_start) - sel_counts['count']
-        sel_counts = sel_counts.merge(tot_counts, on=['Matrix_id', 'sense'])
-        # Fisher's exact test
-        def fisher_test_window(x):
-            odds, p = stats.fisher_exact([[x['count'], x['neg']], [x['count_total'], x['neg_total']]], alternative='two-sided')
-            x['odds'] = odds
-            x['p'] = p
-            return x
-        sel_counts = sel_counts.apply(fisher_test_window, axis = 1)
-        sel_counts['padj'] = multitest.fdrcorrection(sel_counts.p)[1]
-        return sel_counts
+    window_len = sel_end - sel_start
+    sel_count = len(real_sites[(real_sites.id==sel_id) & (real_sites.start>=sel_start) & (real_sites.end<=sel_end)])
+    sel_neg = window_len - sel_count
+    # Expected value
+    exp = (tot_count*window_len)/tot_len
+    # Fisher's exact test
+    odds, p = stats.fisher_exact([[sel_count, sel_neg], [tot_count, tot_neg]], alternative='two-sided')
+    # Make combined dataframe
+    #result = pd.DataFrame()
+    result = {'start': [sel_start],
+              'end': [sel_end],
+              'count': [sel_count],
+              'tot_count': [tot_count],
+              'expected': [exp],
+              'odds': [odds],
+              'p': [p]}
+    result = pd.DataFrame.from_dict(result)
+    return result
 
 
 def get_tiling_windows_over_record(record, width, shift):
@@ -141,7 +161,25 @@ def enrich_in_sliding_windows(real_sites, genome, width, shift):
     # Perform enrichment in each window
     for window in windows:
         result = enrich_in_window(real_sites, genome, window[0], window[1], window[2])
+        result['id'] = window[0]
         results = pd.concat([results, result])
     # Overall FDR correction
     results['padj'] = multitest.fdrcorrection(results.p)[1]
+    results.reset_index(inplace=True, drop=True)
+    return results
+
+
+def examine_thresholds(genome, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True):
+    """
+    Function to compare number of binding sites at various thresholds.
+    """
+    encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=sense)
+    shuf_genome = shuffle_records(genome, simN, simK)
+    encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=sense, rcomp=rcomp, group_by_name=True)
+    thresholds = np.arange(min_threshold, 1.0, 0.1)
+    real_binned = find_sites_multiseq(encoded_genome, model, thresholds, binned_counts=True, combine_seqs=combine_seqs)['binned_counts']
+    shuf_binned = find_sites_multiseq(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True)['binned_counts']
+    results = {'real_binned':real_binned, 'shuf_binned': shuf_binned}
+    if verbose:
+        results['shuf_genome'] = shuf_genome
     return results

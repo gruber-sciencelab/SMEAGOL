@@ -94,8 +94,8 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
     if total_counts:
         output['total_counts'] = total
     if stats:
-        stats = total.groupby(['Matrix_id', 'sense']).agg([len, np.mean, np.std]).reset_index()
-        stats.columns = ['Matrix_id', 'sense', 'len', 'avg', 'sd'] 
+        stats = total.groupby(['Matrix_id', 'sense', 'name']).agg([len, np.mean, np.std]).reset_index()
+        stats.columns = ['Matrix_id', 'sense', 'name', 'len', 'avg', 'sd'] 
         output['stats'] = stats
 
     return output

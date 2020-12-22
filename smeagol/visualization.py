@@ -3,6 +3,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
 import seqlogo
+import scipy.stats as stats
 
 
 def plot_pwm(pwm_df, Matrix_id):
@@ -73,15 +74,15 @@ def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, backg
         
         if background == 'binomial':
             binom_p = shuf_nums.mean()/genome_len
-            preds = scipy.stats.binom(genome_len, binom_p).pmf(cttable.index)
+            preds = stats.binom(genome_len, binom_p).pmf(cttable.index)
             axs[i].plot(cttable.index, preds, c='orange')
         elif background == 'normal':
-            preds = scipy.stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
+            preds = stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
             axs[i].plot(cttable.index, preds, c='orange')
         if background == 'both':
             binom_p = shuf_nums.mean()/genome_len
-            binom_preds = scipy.stats.binom(genome_len, binom_p).pmf(cttable.index)
-            norm_preds = scipy.stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
+            binom_preds = stats.binom(genome_len, binom_p).pmf(cttable.index)
+            norm_preds = stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
             axs[i].plot(cttable.index, binom_preds, c='orange')
             axs[i].plot(cttable.index, norm_preds, c='green')
         

@@ -112,9 +112,9 @@ def shuffle_records(records, simN, simK, out_file=None):
     """
     # Shuffle
     shuf_records = []
-    for n in range(0, simN):
+    for record in records:
         shuf = 1
-        for record in records:
+        for n in range(0, simN):
             new_seq = shuffle(str.encode(record.seq.__str__()), simK).decode()
             new_seq = SeqRecord(Seq(new_seq),id="background_seq_{0:d}".format(shuf))
             new_seq.name = record.id
