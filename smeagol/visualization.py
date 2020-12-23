@@ -1,17 +1,22 @@
+# General imports
 import numpy as np
 import pandas as pd
+
+# Viz imports
 from matplotlib import pyplot as plt
 import seaborn as sns
 import weblogo as wl
 import IPython.display as ipd
 import seqlogo
+
+# Stats imports
 import scipy.stats as stats
 from sklearn import manifold
 
 
 def plot_pwm(pwm_df, Matrix_id, height=15):
     """
-    Function to plot PWM
+    Function to plot sequence logo from PWM
     
     Inputs:
         pwm_df: DF containing cols weight, Matrix_id
@@ -32,7 +37,7 @@ def plot_pwm(pwm_df, Matrix_id, height=15):
 
 def plot_ppm(ppm_df, Matrix_id, height=15):
     """
-    Function to plot PPM
+    Function to plot sequence logo from PPM
     
     Inputs:
         ppm_df: DF containing cols probs, Matrix_id
@@ -59,6 +64,8 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
         shuf_preds: DF containing Matrix_id, sense, bin
         Matrix_id: ID of PWM for which to plot distribution
         sense: sense of strand for which to plot distribution. If not given, both strands are used.
+        rounding: number of digits to round bin thresholds
+        file_path: path to save figure
     
     Returns:
         Plot of binding site counts binned by score.
@@ -82,9 +89,23 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
             plt.savefig(file_path, facecolor='white')
 
 
-def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, background='binomial', figsize=(17,8), ncols=4, file_path=None):
+def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, 
+                    background='binomial', figsize=(17,8), ncols=4, file_path=None):
     """
     Function to plot the distribution of background counts.
+    
+    Inputs:
+        shuf_counts: DF with motif counts in shuffled sequences. 
+        real_counts: DF with motif counts in real sequence.
+        Matrix_ids: IDs of PWMs to plot
+        genome_len: total length of genome. Not needed if background = 'normal'.
+        background: 'binomial', 'normal' or 'both'
+        figsize: total figure size
+        ncols: number of columns for figure panels
+        file_path: path to save figure.
+    
+    Returns:
+        Plot of motif distribution in real vs. background sequences.
     """
     ncols = min(len(Matrix_ids), ncols)
     nrows=int(np.ceil(len(Matrix_ids)/ncols))
@@ -127,6 +148,19 @@ def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, backg
         
 
 def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
+    """
+    Function to visualize a group of PWMs using t-SNE.
+    
+    Inputs:
+        sims: Pairwise similarity matrix for PWMs.
+        labels: PWM IDs.
+        perplexity: parameter for t-SNE
+        clusters: cluster IDs to label points
+        cmap: dictionary mapping cluster IDs to colors
+    
+    Returns:
+        t-SNE plot
+    """
     coords = manifold.TSNE(n_components=2, metric="precomputed", perplexity=perplexity).fit(1-sims).embedding_
     if cmap is not None:
         plt.scatter(coords[:, 0], coords[:, 1], marker = 'o', c=pd.Series(clusters).map(cmap))

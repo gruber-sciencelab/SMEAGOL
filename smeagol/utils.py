@@ -136,34 +136,59 @@ def shuffle_records(records, simN, simK, out_file=None):
 
 # metrics
 
-def cos_sim(a,b):
+def cos_sim(a, b):
+    """
+    Function to calculate cosine similarity between two vectors.
+    """
     return (a @ b.T) / (np.linalg.norm(a)*np.linalg.norm(b))   
 
 
-def row_wise_equal_matrix_similarity(X, Y, method='cosine'):
+def row_wise_equal_matrix_similarity(X, Y, metric='cosine'):
+    """
+    Function to calculate per-row similarity between two equal-sized matrices.
+    
+    Inputs:
+        X, Y: two numpy arrays with same shape
+        metric: 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
+    """
     assert X.shape == Y.shape
-    if method == 'corr':
+    if metric == 'corr':
         row_wise_sims = [np.corrcoef(X[i], Y[i])[0,1] for i in range(X.shape[0])]
-    elif method == 'cosine':
+    elif metric == 'cosine':
         row_wise_sims = [cos_sim(X[i], Y[i]) for i in range(X.shape[0])]
     return row_wise_sims
     
 
-def matrix_similarity(X, Y, method='cosine', min_overlap=None, pad=False):
+def matrix_similarity(X, Y, metric='cosine', min_overlap=None, pad=False):
+    """
+    Function to calculate similarity between two position matrices.
+    
+    Inputs:
+        X, Y: two position matrices as numpy arrays.
+        metric: 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
+        min_overlap: minimum overlap allowed between matrices
+        pad: if one matrix is shorter, count 0 similarity between empty positions
+        
+    Returns:
+        similarity value
+    """
     # X should be the shorter matrix
-    if len(Y) < len(X):
-        X_orig = X
-        X = Y
-        Y = X_orig
-    # Try different alignments
     sims = []
     Ly = len(Y)
     Lx = len(X)
+    if Ly < Lx:
+        X_orig = X
+        X = Y
+        Y = X_orig
+    
+    # Set minimum allowed overlap
     if min_overlap is None:
         if Ly - Lx >= 3:
             min_overlap = Lx - 1
         else:
             min_overlap = int(np.ceil(Lx/2))
+
+    # Slide matrices to try different alignments
     if (Lx == Ly) and ((Lx % 2)==1):
         aln_starts = range(min_overlap - Lx, Ly - min_overlap + 1)
     else:
@@ -172,33 +197,43 @@ def matrix_similarity(X, Y, method='cosine', min_overlap=None, pad=False):
         Y_i = Y[max(i, 0):min(Ly, Lx + i), : ]
         X_i = X[max(-i, 0):min(Lx, Ly - i), :]
         w = min(Ly, Lx + i) - max(i, 0)
-        row_wise_sims = row_wise_equal_matrix_similarity(X_i, Y_i, method=method)
+        row_wise_sims = row_wise_equal_matrix_similarity(X_i, Y_i, metric=metric)
         # Extend alignment with zeros (optional)
         if (pad) and (w < Ly):
             row_wise_sims.extend([0]*(Ly-w))
         sims.append(np.mean(row_wise_sims))
+
+    # Return the highest similarity value across all alignments.
     return max(sims)
 
 
-def pairwise_similarities(mats, method='cosine', pad=False):
+def pairwise_similarities(mats, metric='cosine', pad=False):
+    """
+    Function to calculate all pairwise similarities between a list of position matrices.
+    
+    """
     # Get all pairwise combinations
     combins = list(itertools.combinations(range(len(mats)), 2))
+    
     # Calculate pairwise similarities between all matrices
     sims = np.zeros(shape=(len(mats), len(mats)))
     for i, j in combins:
-        sims[i, j] = matrix_similarity(mats[i], mats[j], method=method, pad=pad)
+        sims[i, j] = matrix_similarity(mats[i], mats[j], metric=metric, pad=pad)
         sims[j, i] = sims[i, j]
     for i in range(len(mats)):
         sims[i, i] = 1
     return sims
 
 
-def choose_representative_mat(pwms, sims=None, method='cosine', maximize='median', pad=False, 
+def choose_representative_mat(pwms, sims=None, metric='cosine', maximize='median', pad=False, 
                               weight_col='probs'):
+    """
+    Function to choose a representative position matrix from a group.
+    """
     mats = list(pwms[weight_col].values)
     ids = list(pwms.Matrix_id)
     if sims is None:
-        sims = pairwise_similarities(mats, method=method, pad=pad)
+        sims = pairwise_similarities(mats, metric=metric, pad=pad)
     if len(mats)==2:
         # Choose matrix with lowest entropy
         entropies = [avg_entropy(np.exp2(mat)/4) for mat in mats]
@@ -214,8 +249,11 @@ def choose_representative_mat(pwms, sims=None, method='cosine', maximize='median
     return ids[sel_mat]
 
     
-def choose_cluster_representative_mats(pwms, sims=None, clusters=None, method='cosine', 
+def choose_cluster_representative_mats(pwms, sims=None, clusters=None, metric='cosine', 
                                maximize='median', pad=False, weight_col='probs'):
+    """
+    Function to choose a representative position matrix from each cluster.
+    """
     representatives = []
     cluster_ids = np.unique(clusters)
     c_sims = None
@@ -226,16 +264,19 @@ def choose_cluster_representative_mats(pwms, sims=None, clusters=None, method='c
             mats = pwms[pwms.Matrix_id.isin(mat_ids)]
             if sims is not None:
                 c_sims = sims[in_cluster, :][:, in_cluster]
-            sel_mat = choose_representative_mat(mats, sims=c_sims, method=method, 
+            sel_mat = choose_representative_mat(mats, sims=c_sims, metric=metric, 
                                                 maximize=maximize, pad=pad, weight_col=weight_col)
             representatives.append(sel_mat)
     return representatives
 
 
 def cluster_pwms(pwms, n_clusters, sims=None, weight_col='probs', perplexity=4, plot=True, 
-                 method='cosine', pad=False):
+                 metric='cosine', pad=False):
+    """
+    Function to cluster position matrices.
+    """
     if sims is None:
-        sims = pairwise_similarities(list(pwms[weight_col]), method=method, pad=pad)
+        sims = pairwise_similarities(list(pwms[weight_col]), metric=metric, pad=pad)
     cluster_ids = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', 
                                           distance_threshold=None, linkage='complete').fit(1-sims).labels_
     if plot:
