@@ -19,8 +19,15 @@ from mimetypes import guess_type
 from functools import partial
 from .fastaio import write_fasta
 
+# Stats imports
+from sklearn.cluster import AgglomerativeClustering
+
+# Viz imports
+from .visualization import plot_pwm_similarity
+
 
 # PPM/PWM analysis
+    
 
 def entropy(probs):
     """
@@ -125,3 +132,113 @@ def shuffle_records(records, simN, simK, out_file=None):
     if out_file is not None:
         write_fasta(shuf_records, out_file)
     return shuf_records
+
+
+# metrics
+
+def cos_sim(a,b):
+    return (a @ b.T) / (np.linalg.norm(a)*np.linalg.norm(b))   
+
+
+def row_wise_equal_matrix_similarity(X, Y, method='cosine'):
+    assert X.shape == Y.shape
+    if method == 'corr':
+        row_wise_sims = [np.corrcoef(X[i], Y[i])[0,1] for i in range(X.shape[0])]
+    elif method == 'cosine':
+        row_wise_sims = [cos_sim(X[i], Y[i]) for i in range(X.shape[0])]
+    return row_wise_sims
+    
+
+def matrix_similarity(X, Y, method='cosine', min_overlap=None, pad=False):
+    # X should be the shorter matrix
+    if len(Y) < len(X):
+        X_orig = X
+        X = Y
+        Y = X_orig
+    # Try different alignments
+    sims = []
+    Ly = len(Y)
+    Lx = len(X)
+    if min_overlap is None:
+        if Ly - Lx >= 3:
+            min_overlap = Lx - 1
+        else:
+            min_overlap = int(np.ceil(Lx/2))
+    if (Lx == Ly) and ((Lx % 2)==1):
+        aln_starts = range(min_overlap - Lx, Ly - min_overlap + 1)
+    else:
+        aln_starts = range(min_overlap - Lx, Ly - min_overlap)
+    for i in aln_starts:
+        Y_i = Y[max(i, 0):min(Ly, Lx + i), : ]
+        X_i = X[max(-i, 0):min(Lx, Ly - i), :]
+        w = min(Ly, Lx + i) - max(i, 0)
+        row_wise_sims = row_wise_equal_matrix_similarity(X_i, Y_i, method=method)
+        # Extend alignment with zeros (optional)
+        if (pad) and (w < Ly):
+            row_wise_sims.extend([0]*(Ly-w))
+        sims.append(np.mean(row_wise_sims))
+    return max(sims)
+
+
+def pairwise_similarities(mats, method='cosine', pad=False):
+    # Get all pairwise combinations
+    combins = list(itertools.combinations(range(len(mats)), 2))
+    # Calculate pairwise similarities between all matrices
+    sims = np.zeros(shape=(len(mats), len(mats)))
+    for i, j in combins:
+        sims[i, j] = matrix_similarity(mats[i], mats[j], method=method, pad=pad)
+        sims[j, i] = sims[i, j]
+    for i in range(len(mats)):
+        sims[i, i] = 1
+    return sims
+
+
+def choose_representative_mat(pwms, sims=None, method='cosine', maximize='median', pad=False, 
+                              weight_col='probs'):
+    mats = list(pwms[weight_col].values)
+    ids = list(pwms.Matrix_id)
+    if sims is None:
+        sims = pairwise_similarities(mats, method=method, pad=pad)
+    if len(mats)==2:
+        # Choose matrix with lowest entropy
+        entropies = [avg_entropy(np.exp2(mat)/4) for mat in mats]
+        sel_mat = np.argmin(entropies)
+    elif len(mats)>2:
+        # Choose matrix closest to all
+        if maximize == 'mean':
+            sel_mat = np.argmax(np.mean(sims, axis=0))
+        elif maximize == 'median':
+            sel_mat = np.argmax(np.median(sims, axis=0))
+    else:
+        sel_mat = 0
+    return ids[sel_mat]
+
+    
+def choose_cluster_representative_mats(pwms, sims=None, clusters=None, method='cosine', 
+                               maximize='median', pad=False, weight_col='probs'):
+    representatives = []
+    cluster_ids = np.unique(clusters)
+    c_sims = None
+    for cluster_id in cluster_ids:
+        in_cluster = (clusters==cluster_id)
+        if np.sum(in_cluster) > 1:
+            mat_ids = np.array(pwms.Matrix_id)[in_cluster]
+            mats = pwms[pwms.Matrix_id.isin(mat_ids)]
+            if sims is not None:
+                c_sims = sims[in_cluster, :][:, in_cluster]
+            sel_mat = choose_representative_mat(mats, sims=c_sims, method=method, 
+                                                maximize=maximize, pad=pad, weight_col=weight_col)
+            representatives.append(sel_mat)
+    return representatives
+
+
+def cluster_pwms(pwms, n_clusters, sims=None, weight_col='probs', perplexity=4, plot=True, 
+                 method='cosine', pad=False):
+    if sims is None:
+        sims = pairwise_similarities(list(pwms[weight_col]), method=method, pad=pad)
+    cluster_ids = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', 
+                                          distance_threshold=None, linkage='complete').fit(1-sims).labels_
+    if plot:
+        cmap = {3:'purple', 2:'green', 1:'blue', 0:'red', -1:'orange'}
+        plot_pwm_similarity(sims, pwms.Matrix_id, perplexity=perplexity, clusters=cluster_ids, cmap=cmap)
+    return cluster_ids

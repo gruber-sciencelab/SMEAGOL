@@ -2,11 +2,14 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
+import weblogo as wl
+import IPython.display as ipd
 import seqlogo
 import scipy.stats as stats
+from sklearn import manifold
 
 
-def plot_pwm(pwm_df, Matrix_id):
+def plot_pwm(pwm_df, Matrix_id, height=15):
     """
     Function to plot PWM
     
@@ -18,8 +21,33 @@ def plot_pwm(pwm_df, Matrix_id):
         Plots PWM
     """
     weights = pwm_df.weight.values[pwm_df.Matrix_id==Matrix_id]
-    ppm = seqlogo.Ppm(np.exp2(weights[0])/4)
-    return seqlogo.seqlogo(ppm, format='png', size='small')
+    pm = np.exp2(weights[0])/4
+    pm = seqlogo.Ppm(pm/np.expand_dims(np.sum(pm, axis=1),1))
+    options = wl.LogoOptions(unit_name = 'bits', color_scheme = wl.std_color_schemes['classic'], 
+                         show_fineprint = False, stack_width = height)
+    options.logo_title = Matrix_id
+    out = wl.formatters['png'](pm, wl.LogoFormat(pm, options))
+    return ipd.Image(out)
+
+
+def plot_ppm(ppm_df, Matrix_id, height=15):
+    """
+    Function to plot PPM
+    
+    Inputs:
+        ppm_df: DF containing cols probs, Matrix_id
+        Matrix_id: ID of PWM to plot
+    
+    Returns:
+        Plots PPM
+    """
+    probs = ppm_df.probs.values[ppm_df.Matrix_id==Matrix_id]
+    pm = seqlogo.Ppm(probs[0])
+    options = wl.LogoOptions(unit_name = 'bits', color_scheme = wl.std_color_schemes['classic'], 
+                         show_fineprint = False, stack_width = height)
+    options.logo_title = Matrix_id
+    out = wl.formatters['png'](pm, wl.LogoFormat(pm, options))
+    return ipd.Image(out)
 
 
 def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, rounding=3, file_path=None):
@@ -96,3 +124,19 @@ def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, backg
         plt.savefig(file_path, facecolor='white')
     else:
         plt.show()
+        
+
+def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
+    coords = manifold.TSNE(n_components=2, metric="precomputed", perplexity=perplexity).fit(1-sims).embedding_
+    if cmap is not None:
+        plt.scatter(coords[:, 0], coords[:, 1], marker = 'o', c=pd.Series(clusters).map(cmap))
+    else:
+        plt.scatter(coords[:, 0], coords[:, 1], marker = 'o')
+    for label, x, y in zip(labels, coords[:, 0], coords[:, 1]):
+        plt.annotate(
+            label,
+            xy = (x, y), xytext = (-20, 20),
+            textcoords = 'offset points', ha = 'right', va = 'bottom',
+            bbox = dict(boxstyle = 'round,pad=0.5', alpha = 0.2),
+            arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+    plt.show()
