@@ -174,3 +174,46 @@ def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
             bbox = dict(boxstyle = 'round,pad=0.5', alpha = 0.2),
             arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
     plt.show()
+
+
+def sliding_window_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_path=None):
+    """
+    Function to visualize enrichment / depletion analysis using sliding windows.
+    
+    Inputs:
+        sliding_window_df: A pandas dataframe that contains the data to plot.
+        x_var: The name of the column that should be used as x-axis. 
+        y_var: The name of the column that should be used as y-axis.
+        xticklabels: The name of the column that contains the x-axis labels.
+        title: The title to be used for the plot.
+        file_path: The path to the file into which the plot should be written.
+    
+    Returns:
+        Sliding window plot. 
+    """
+
+    # Make sure plt is closed before starting a new one
+    plt.close()
+    
+    # Set the size of the plot
+    plt.figure(figsize=(6, 4))
+    
+    sig_sorted = sliding_window_df.sort_values(y_var)['sig']
+
+    barplot = sns.barplot(x=x_var, y=y_var, data=sliding_window_df, color='gray')
+    barplot.set_xticklabels(labels=sliding_window_df[xticklabels], rotation=90)
+    barplot.get_xticklabels()
+    barplot.set(xlabel="Viral genome region (start - end)[nt]", ylabel = "Site counts")
+    barplot.set_title(title)
+
+    for p, sig in zip(barplot.patches,sig_sorted):
+        if sig == True:
+            barplot.text(p.get_x() + p.get_width() / 2., p.get_height(), 
+                         '*', ha='center')
+
+    plt.tight_layout()
+
+    if file_path is not None:
+        plt.savefig(file_path, transparent=False, facecolor='white', dpi=300)
+
+
