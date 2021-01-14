@@ -32,11 +32,16 @@ class PWMModel:
             outputs = conc(pwm_outputs)
         model = Model(inputs=inputs, outputs=outputs, name="pwm_model")
         # Fix weights
-        for i in range(1, len(model.layers)-1):
-            l = model.layers[i]
-            w = unique_widths[i-1]
-            weights = np.stack(self.weights[self.widths == w], axis=2)
+        if len(unique_widths) == 1:
+            l = model.layers[1]
+            weights = np.stack(self.weights, axis=2)
             l.set_weights([weights])
+        else:
+            for i in range(1, len(model.layers)-1):
+                l = model.layers[i]
+                w = unique_widths[i-1]
+                weights = np.stack(self.weights[self.widths == w], axis=2)
+                l.set_weights([weights])
         self.model = model
     def predict(self, inp):
         return self.model.predict(inp)
