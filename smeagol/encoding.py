@@ -34,9 +34,34 @@ sense_complement_dict = {
     '-':'+'
 }
 
+bases = list(one_hot_dict.keys())
+integer_encoding_dict = {}
+for x in range(len(bases)):
+    integer_encoding_dict[bases[x]] = x
 
-
+    
 # Sequence encoding
+
+def integer_encode(record, rcomp=False):
+    """
+    Function to integer encode a DNA sequence.
+    Parameters:
+      seq: seqrecord object containing a sequence of length L
+      rcomp: rcomp sequence before encoding
+    
+    Returns:
+      Numpy array containing integer encoded sequence. Shape (1, L, 1)
+    
+    """
+    if rcomp:
+        seq = record.seq.reverse_complement()
+    else:
+        seq = record.seq
+    result = np.array([integer_encoding_dict.get(base) for base in seq])
+    result = np.expand_dims(result, 0)
+    result = np.expand_dims(result, 2)
+    return result  
+
 
 def one_hot_encode(record, rcomp=False):
     """
@@ -72,13 +97,14 @@ class SeqEncoding:
         self.reverse_complemented = False
         if len(records) > 1:
             self.check_equal_lens(records)
-        self.one_hot = np.concatenate([one_hot_encode(record, rcomp=False) for record in records], axis=0)
+        self.len = len(records[0].seq)
+        self.encoded = np.concatenate([integer_encode(record, rcomp=False) for record in records], axis=0)
         self.ids = np.array([record.id for record in records])
         self.names = np.array([record.name for record in records])
         self.senses = np.array([sense]*len(records))
         if rcomp:
-            c_one_hot = np.concatenate([one_hot_encode(record, rcomp=True) for record in records], axis=0)
-            self.one_hot = np.concatenate([self.one_hot, c_one_hot], axis=0)
+            rcomp_encoded = np.concatenate([integer_encode(record, rcomp=True) for record in records], axis=0)
+            self.encoded = np.concatenate([self.encoded, rcomp_encoded], axis=0)
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
             self.senses = np.append(self.senses, [sense_complement_dict[sense] for sense in self.senses])

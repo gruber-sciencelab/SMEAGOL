@@ -196,9 +196,9 @@ def sliding_window_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_pat
     plt.close()
     
     # Set the size of the plot
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=(12, 4))
     
-    sig_sorted = sliding_window_df.sort_values(y_var)['sig']
+    #sig_sorted = sliding_window_df.sort_values(y_var)['sig']
 
     barplot = sns.barplot(x=x_var, y=y_var, data=sliding_window_df, color='gray')
     barplot.set_xticklabels(labels=sliding_window_df[xticklabels], rotation=90)
@@ -206,7 +206,7 @@ def sliding_window_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_pat
     barplot.set(xlabel="Viral genome region (start - end)[nt]", ylabel = "Site counts")
     barplot.set_title(title)
 
-    for p, sig in zip(barplot.patches,sig_sorted):
+    for p, sig in zip(barplot.patches, sliding_window_df.sig):
         if sig == True:
             barplot.text(p.get_x() + p.get_width() / 2., p.get_height(), 
                          '*', ha='center')
