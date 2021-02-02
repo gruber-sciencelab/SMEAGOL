@@ -6,9 +6,16 @@ import numpy as np
 
 def predict(encoding, model, threshold, score=False):
     scores = None
-    predictions = model.predict(encoding.one_hot)
+    # Predict to get scores for every possible site
+    predictions = model.predict(encoding.encoded)
+    # Pad and concatenate list
+    if isinstance(predictions, list):
+        predictions = [np.pad(x, ((0,0), (0, encoding.len - x.shape[1]), (0,0)), mode='constant', constant_values=-1) for x in predictions]
+    predictions = np.concatenate(predictions, axis=2)
+    # Threshold predictions
     thresholds = threshold*model.max_scores
     thresholded = np.where(predictions > thresholds)
+    # Combine site locations with scores
     if score:
         scores = predictions[thresholded]
     return thresholded, scores
@@ -18,7 +25,6 @@ def locate_sites(encoding, model, thresholded, scores=None):
     seq_idx = thresholded[0]
     pos_idx = thresholded[1]
     pwm_idx = thresholded[2]
-    output = {}
     sites = pd.DataFrame({'id': encoding.ids[seq_idx],
                               'name':encoding.names[seq_idx],
                               'sense':encoding.senses[seq_idx],
@@ -30,6 +36,7 @@ def locate_sites(encoding, model, thresholded, scores=None):
         sites['score'] = scores
         sites['max_score'] = model.max_scores[pwm_idx]
         sites['frac_score'] = sites['score']/sites['max_score']
+    sites = sites[sites.end <= encoding.len].reset_index(drop=True)
     return sites
 
 
