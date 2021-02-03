@@ -185,10 +185,12 @@ def matrix_similarity(X, Y, metric='cosine', min_overlap=None, pad=False):
     
     # Set minimum allowed overlap
     if min_overlap is None:
-        if Ly - Lx >= 3:
-            min_overlap = Lx - 1
-        else:
-            min_overlap = int(np.ceil(Lx/2))
+        min_overlap=Lx-2
+
+        #if Ly - Lx >= 3:
+            #min_overlap = Lx - 1
+        #else:
+            #min_overlap = int(np.ceil(Lx/2))
 
     # Slide matrices to try different alignments
     if (Lx == Ly) and ((Lx % 2)==1):
@@ -262,14 +264,13 @@ def choose_cluster_representative_mats(pwms, sims=None, clusters=None, metric='c
     c_sims = None
     for cluster_id in cluster_ids:
         in_cluster = (clusters==cluster_id)
-        if np.sum(in_cluster) > 1:
-            mat_ids = np.array(pwms.Matrix_id)[in_cluster]
-            mats = pwms[pwms.Matrix_id.isin(mat_ids)]
-            if sims is not None:
-                c_sims = sims[in_cluster, :][:, in_cluster]
-            sel_mat = choose_representative_mat(mats, sims=c_sims, metric=metric, 
+        mat_ids = np.array(pwms.Matrix_id)[in_cluster]
+        mats = pwms[pwms.Matrix_id.isin(mat_ids)]
+        if sims is not None:
+            c_sims = sims[in_cluster, :][:, in_cluster]
+        sel_mat = choose_representative_mat(mats, sims=c_sims, metric=metric, 
                                                 maximize=maximize, pad=pad, weight_col=weight_col)
-            representatives.append(sel_mat)
+        representatives.append(sel_mat)
     return representatives
 
 
