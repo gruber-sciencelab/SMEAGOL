@@ -180,6 +180,8 @@ def matrix_similarity(X, Y, metric='cosine', min_overlap=None, pad=False):
         X_orig = X
         X = Y
         Y = X_orig
+    Ly = len(Y)
+    Lx = len(X)
     
     # Set minimum allowed overlap
     if min_overlap is None:
@@ -222,6 +224,7 @@ def pairwise_similarities(mats, metric='cosine', pad=False):
         sims[j, i] = sims[i, j]
     for i in range(len(mats)):
         sims[i, i] = 1
+    print("Minimum pairwise similarity: " + str(np.min(sims)))
     return sims
 
 
@@ -271,7 +274,7 @@ def choose_cluster_representative_mats(pwms, sims=None, clusters=None, metric='c
 
 
 def cluster_pwms(pwms, n_clusters, sims=None, weight_col='probs', perplexity=4, plot=True, 
-                 metric='cosine', pad=False):
+                 metric='cosine', pad=False, output='reps'):
     """
     Function to cluster position matrices.
     """
@@ -282,4 +285,10 @@ def cluster_pwms(pwms, n_clusters, sims=None, weight_col='probs', perplexity=4, 
     if plot:
         cmap = {3:'purple', 2:'green', 1:'blue', 0:'red', -1:'orange'}
         plot_pwm_similarity(sims, pwms.Matrix_id, perplexity=perplexity, clusters=cluster_ids, cmap=cmap)
-    return cluster_ids
+    if output=='reps':
+        reps = choose_cluster_representative_mats(pwms, sims=sims, clusters=cluster_ids, metric=metric, 
+                               maximize='median', pad=pad, weight_col=weight_col)
+        print("Representatives: " + str(reps))
+        return reps
+    elif output == 'clusters':
+        return cluster_ids
