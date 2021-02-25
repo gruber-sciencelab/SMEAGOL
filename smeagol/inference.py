@@ -20,7 +20,7 @@ def predict(encoding, model, threshold, score=False):
 		if score:
 			scores = np.concatenate([predictions[i][:,:,0][thresholded[0][i], thresholded[1][i]] for i in range(len(predictions))])
 		thresholded.append([[i]*thresholded[0][i].shape[0] for i in range(len(predictions))])
-		thresholded = [np.concatenate(x) for x in thresholded]
+		thresholded = [np.concatenate(x).astype(int) for x in thresholded]
 	else:
 		thresholded = np.where(predictions > thresholds)
 		if score:
