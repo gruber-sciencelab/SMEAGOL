@@ -5,20 +5,26 @@ import numpy as np
 
 
 def predict(encoding, model, threshold, score=False):
-    scores = None
-    # Predict to get scores for every possible site
-    predictions = model.predict(encoding.encoded)
-    # Pad and concatenate list
-    if isinstance(predictions, list):
-        predictions = [np.pad(x, ((0,0), (0, encoding.len - x.shape[1]), (0,0)), mode='constant', constant_values=-1) for x in predictions]
-    predictions = np.concatenate(predictions, axis=2)
-    # Threshold predictions
-    thresholds = threshold*model.max_scores
-    thresholded = np.where(predictions > thresholds)
-    # Combine site locations with scores
-    if score:
-        scores = predictions[thresholded]
-    return thresholded, scores
+	scores = None
+	thresholds = threshold*model.max_scores
+	predictions = model.predict(encoding.encoded)
+	if isinstance(predictions, list):
+		predictions = [np.split(x, x.shape[2],2) for x in predictions]
+		predictions = list(itertools.chain.from_iterable(predictions))
+		thresholded = [[], []]
+		for i,p in enumerate(predictions):
+			x = np.where(p >= thresholds[i])
+			thresholded[0].append(x[0])
+			thresholded[1].append(x[1])
+		if score:
+			scores = np.concatenate([predictions[i][:,:,0][thresholded[0][i], thresholded[1][i]] for i in range(len(predictions))])
+		thresholded.append([[i]*thresholded[0][i].shape[0] for i in range(len(predictions))])
+		thresholded = [np.concatenate(x) for x in thresholded]
+	else:
+		thresholded = np.where(predictions > thresholds)
+		if score:
+			scores = predictions[thresholded]
+	return thresholded, scores
 
 
 def locate_sites(encoding, model, thresholded, scores=None):
