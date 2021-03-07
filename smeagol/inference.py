@@ -103,7 +103,7 @@ def count_sites(encoding, model, thresholded):
     return result
 
 
-def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, method="fast"):
     """
     Function to predict binding sites on sequence(s).
     
@@ -115,6 +115,8 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
         binned_counts: output binned counts of binding sites per PWM
         total_counts: output total count of binding sites per PWM
         stats: output mean and standard deviation of the count of binding sites per PWM
+        score: output scores for binding sites
+        method: prediction function, "fast" or "highmem"
     
     Returns: 
         output: dictionary containing specified outputs.
@@ -125,9 +127,9 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
         score = True
     if binned_counts:
         assert type(threshold) == np.ndarray
-        thresholded, scores = predict(encoding, model, min(threshold), score)
+        thresholded, scores = predict(encoding, model, min(threshold), score, method)
     else:
-        thresholded, scores = predict(encoding, model, threshold, score)
+        thresholded, scores = predict(encoding, model, threshold, score, method)
     output = {}
     if sites:
         output['sites'] = locate_sites(encoding, model, thresholded, scores)
@@ -145,16 +147,16 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
     return output
 
 
-def find_sites_multiseq(encodings, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, combine_seqs=False, sep_ids=False):
+def find_sites_multiseq(encodings, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, combine_seqs=False, sep_ids=False, method="fast"):
     """
     Function to predict binding site on class MultiSeqEncoding.
     
     """
     # Find binding sites
     if combine_seqs and stats:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score=score) for seq in encodings.seqs]
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score, method) for seq in encodings.seqs]
     else:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score) for seq in encodings.seqs]
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score, method) for seq in encodings.seqs]
     # Concatenate
     output = {}
     for key in output_per_seq[0].keys():
