@@ -49,13 +49,13 @@ def predict_highmem(predictions, thresholds, score=False):
 
 
 def predict(encoding, model, threshold, score=False, method="fast"):
-	thresholds = threshold*model.max_scores
-	predictions = model.predict(encoding.encoded)
+    thresholds = threshold*model.max_scores
+    predictions = model.predict(encoding.encoded)
     if method == "highmem" and isinstance(predictions, list):
         thresholded, scores = predict_highmem(predictions, thresholds, score)
     else:
         thresholded, scores = predict_fast(encoding, predictions, thresholds, score)
-	return thresholded, scores
+    return thresholded, scores
 
 
 def locate_sites(encoding, model, thresholded, scores=None):
