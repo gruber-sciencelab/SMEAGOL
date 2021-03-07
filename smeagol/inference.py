@@ -154,7 +154,7 @@ def find_sites_multiseq(encodings, model, threshold, sites=False, binned_counts=
     """
     # Find binding sites
     if combine_seqs and stats:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score, method) for seq in encodings.seqs]
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score=score, method=method) for seq in encodings.seqs]
     else:
         output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score, method) for seq in encodings.seqs]
     # Concatenate
