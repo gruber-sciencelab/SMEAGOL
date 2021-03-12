@@ -65,7 +65,7 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
     return enr_full
 
 
-def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, background='binomial', verbose=False, combine_seqs=True):
+def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, background='binomial', verbose=False, combine_seqs=True, method='fast'):
     """
     Function to calculate enrichment of PWMs in a sequence relative to a shuffled background.
     """
@@ -81,11 +81,11 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, 
     encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=genome_sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
     if verbose:
-        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=True, stats=True, combine_seqs=combine_seqs, sep_ids=True)
+        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=True, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
         shuf_counts = shuf_preds['total_counts']
     else:
         shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, stats=True, 
-                                         combine_seqs=combine_seqs, sep_ids=True)
+                                         combine_seqs=combine_seqs, sep_ids=True, method=method)
     shuf_stats = shuf_preds['stats']
     # Calculate binding site enrichment
     if background == 'normal':
