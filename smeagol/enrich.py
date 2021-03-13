@@ -81,10 +81,10 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, 
     shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=verbose, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
     # Calculate binding site enrichment
     if background == 'normal':
-        enr = enrich_over_shuffled(real_counts, shuf_stats, background=background)
+        enr = enrich_over_shuffled(real_preds['total_counts'], shuf_preds['stats'], background=background)
     elif background == 'binomial' or background == 'both':
         seqlen = sum([len(x) for x in genome])
-        enr = enrich_over_shuffled(real_counts, shuf_stats, background=background, seqlen=seqlen)
+        enr = enrich_over_shuffled(real_preds['total_counts'], shuf_preds['stats'], background=background, seqlen=seqlen)
     # Combine results
     results = {'enrichment': enr, 
                'real_sites': real_preds['sites'], 
