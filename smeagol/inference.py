@@ -5,15 +5,16 @@ import numpy as np
 import itertools
 
 
-def predict_fast(encoding, predictions, thresholds, score=False):
+def threshold_fast(encoding, predictions, thresholds, score=False):
     """
-    Default prediction function.
+    Default function to threshold model predictions.
     encoding: integer-encoded sequence.
     predictions: model output.
     thresholds: cutoff for each PWM in model
     score: output score for each match
     """
     scores = None
+    # Concatenate predictions from each set of PWMs
     if isinstance(predictions, list):
         predictions = [np.pad(x, ((0,0), (0, encoding.len - x.shape[1]), (0,0)), 
             mode='constant', constant_values=-1) for x in predictions]
@@ -26,16 +27,18 @@ def predict_fast(encoding, predictions, thresholds, score=False):
     return thresholded, scores
 
 
-def predict_highmem(predictions, thresholds, score=False):
+def threshold_lowmem(predictions, thresholds, score=False):
     """
-    Prediction function for high-memory jobs (e.g. long genomes).
+    Thresholding function for high-memory jobs (e.g. long genomes).
     predictions: model output.
     thresholds: cutoff for each PWM in model
     score: output score for each match
     """
     scores = None
+    # Split predictions from each PWM
     predictions = [np.split(x, x.shape[2],2) for x in predictions]
     predictions = list(itertools.chain.from_iterable(predictions))
+    # Threshold predictions
     thresholded = [[], []]
     for i,p in enumerate(predictions):
         x = np.where(p >= thresholds[i])
@@ -43,7 +46,9 @@ def predict_highmem(predictions, thresholds, score=False):
         thresholded[1].append(x[1])
     if score:
         scores = np.concatenate([predictions[i][:,:,0][thresholded[0][i], thresholded[1][i]] for i in range(len(predictions))])
+    # Add back PWM ID
     thresholded.append([[i] * thresholded[0][i].shape[0] for i in range(len(predictions))])
+    # Concatenate results
     thresholded = [np.concatenate(x).astype(int) for x in thresholded]
     return thresholded, scores
 
@@ -51,10 +56,10 @@ def predict_highmem(predictions, thresholds, score=False):
 def predict(encoding, model, threshold, score=False, method="fast"):
     thresholds = threshold*model.max_scores
     predictions = model.predict(encoding.encoded)
-    if method == "highmem" and isinstance(predictions, list):
-        thresholded, scores = predict_highmem(predictions, thresholds, score)
+    if method == "lowmem" and isinstance(predictions, list):
+        thresholded, scores = threshold_lowmem(predictions, thresholds, score)
     else:
-        thresholded, scores = predict_fast(encoding, predictions, thresholds, score)
+        thresholded, scores = threshold_fast(encoding, predictions, thresholds, score)
     return thresholded, scores
 
 

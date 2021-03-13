@@ -63,26 +63,6 @@ def integer_encode(record, rcomp=False):
     return result  
 
 
-def one_hot_encode(record, rcomp=False):
-    """
-    Function to one-hot encode a DNA sequence.
-    Parameters:
-      seq: seqrecord object containing a sequence of length L
-      rcomp: rcomp sequence before encoding
-    
-    Returns:
-      Numpy array containing one-hot encoded sequence. Shape (1, L, 4)
-    
-    """
-    if rcomp:
-        seq = record.seq.reverse_complement()
-    else:
-        seq = record.seq
-    result = np.array([one_hot_dict.get(base) for base in seq])
-    result = np.expand_dims(result, 0)        
-    return result
-
-
 class SeqEncoding:
     '''
     Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.

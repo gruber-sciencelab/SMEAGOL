@@ -73,29 +73,25 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, 
     encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=genome_sense)
     # Find sites on real genome
     real_preds = find_sites_multiseq(encoded_genome, model, threshold, sites=True, total_counts=True, combine_seqs=combine_seqs)
-    real_sites = real_preds['sites']
-    real_counts = real_preds['total_counts']
     # Shuffle genome
     shuf_genome = shuffle_records(genome, simN, simK)
     # Encode shuffled genomes
     encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=genome_sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
-    if verbose:
-        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=True, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
-        shuf_counts = shuf_preds['total_counts']
-    else:
-        shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, stats=True, 
-                                         combine_seqs=combine_seqs, sep_ids=True, method=method)
-    shuf_stats = shuf_preds['stats']
+    shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=verbose, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
     # Calculate binding site enrichment
     if background == 'normal':
         enr = enrich_over_shuffled(real_counts, shuf_stats, background=background)
     elif background == 'binomial' or background == 'both':
         seqlen = sum([len(x) for x in genome])
         enr = enrich_over_shuffled(real_counts, shuf_stats, background=background, seqlen=seqlen)
-    results = {'enrichment':enr, 'real_sites':real_sites, 'real_counts':real_counts, 'shuf_stats': shuf_stats}
+    # Combine results
+    results = {'enrichment': enr, 
+               'real_sites': real_preds['sites'], 
+               'real_counts': real_preds['total_counts'], 
+               'shuf_stats': shuf_preds['stats']}
     if verbose:
-        results['shuf_counts'] = shuf_counts
+        results['shuf_counts'] = shuf_preds['total_counts']
         results['shuf_genome'] = shuf_genome
     return results
 
