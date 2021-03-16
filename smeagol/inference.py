@@ -18,7 +18,7 @@ def threshold_fast(encoding, predictions, thresholds, score=False):
     if isinstance(predictions, list):
         predictions = [np.pad(x, ((0,0), (0, encoding.len - x.shape[1]), (0,0)), 
             mode='constant', constant_values=-1) for x in predictions]
-    predictions = np.concatenate(predictions, axis=2)
+        predictions = np.concatenate(predictions, axis=2)
     # Threshold predictions
     thresholded = np.where(predictions > thresholds)
     # Combine site locations with scores
