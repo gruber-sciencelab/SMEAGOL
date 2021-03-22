@@ -43,40 +43,44 @@ for x in range(len(bases)):
 # Sequence encoding
 
 def integer_encode(record, rcomp=False):
-    """
-    Function to integer encode a DNA sequence.
-    Parameters:
-      seq: seqrecord object containing a sequence of length L
-      rcomp: rcomp sequence before encoding
+    """Function to integer encode a DNA sequence.
+    
+    Args:
+      seq (seqrecord): seqrecord object containing a sequence of length L
+      rcomp (bool): reverse complement the sequence before encoding
     
     Returns:
-      Numpy array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
     
     """
+    # Reverse complement
     if rcomp:
         seq = record.seq.reverse_complement()
     else:
         seq = record.seq
+    # Encode
     result = np.array([integer_encoding_dict.get(base) for base in seq])
+    # Shape
     result = np.expand_dims(result, 0)
     result = np.expand_dims(result, 2)
     return result  
 
 
 class SeqEncoding:
-    '''
-    Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
+    """Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
     
-    Parameters:
-      records: list of seqrecord objects
-      rcomp: encode sequence reverse complement as well
-      sense: sense of sequence(s)
+    Args:
+        records (list): list of seqrecord objects
+        rcomp (bool): encode sequence reverse complement as well as original sequence
+        sense (str): sense of sequence(s), '+' or '-'.
+      
+    Raises:
+        ValueError: if sequences have unequal length.
     
-    '''
+    """
     def __init__(self, records, rcomp=False, sense=None):
         self.reverse_complemented = False
-        if len(records) > 1:
-            self.check_equal_lens(records)
+        self.check_equal_lens(records)
         self.len = len(records[0].seq)
         self.encoded = np.concatenate([integer_encode(record, rcomp=False) for record in records], axis=0)
         self.ids = np.array([record.id for record in records])
@@ -90,20 +94,20 @@ class SeqEncoding:
             self.senses = np.append(self.senses, [sense_complement_dict[sense] for sense in self.senses])
             self.reverse_complemented = True
     def check_equal_lens(self, records):
-        lens = [len(record.seq) for record in records]
-        if len(np.unique(lens)) != 1:
-            raise ValueError("Cannot encode - sequences have unequal length!")
+        if len(records) > 1:
+            lens = [len(record.seq) for record in records]
+            if len(np.unique(lens)) != 1:
+                raise ValueError("Cannot encode - sequences have unequal length!")
 
     
 class MultiSeqEncoding:
-    """
-    Encodes multiple sets of sequences, each of which may have different length.
+    """Encodes multiple sets of sequences, each of which may have different length.
     
-    Parameters:
-      records: list of seqrecord objects
-      rcomp: encode sequence reverse complement as well
-      sense: sense of sequence(s)
-      group_by_name: group sequences by their name
+    Args:
+        records (list): list of seqrecord objects
+        rcomp (bool): encode sequence reverse complement as well as original sequence
+        sense (str): sense of sequence(s), '+' or '-'.
+        group_by_name (bool): group sequences by their name
     
     """
     def __init__(self, records, rcomp=False, sense=None, group_by_name=False):
