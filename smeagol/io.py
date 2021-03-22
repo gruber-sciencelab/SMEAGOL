@@ -2,9 +2,14 @@ import gzip
 from mimetypes import guess_type
 from functools import partial
 
+# Biopython imports
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+
+# Biasaway imports
+from biasaway.utils import GC, dinuc_count, IUPAC_DINUC
+from ushuffle import shuffle, set_seed
 
 
 def read_fasta(file):
