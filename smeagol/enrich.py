@@ -89,9 +89,9 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     # Find sites on real genome
     real_preds = find_sites_multiseq(encoded, model, threshold, sites=True, total_counts=True, combine_seqs=combine_seqs)
     # Shuffle genome
-    shuf_records = shuffle_records(records, simN, simK)
+    shuf = shuffle_records(records, simN, simK)
     # Encode shuffled genomes
-    encoded_shuffled = MultiSeqEncoding(shuf_records, sense=sense, rcomp=rcomp, group_by_name=True)
+    encoded_shuffled = MultiSeqEncoding(shuf, sense=sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
     shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=verbose, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
     # Calculate binding site enrichment
@@ -107,7 +107,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
                'shuf_stats': shuf_preds['stats']}
     if verbose:
         results['shuf_counts'] = shuf_preds['total_counts']
-        results['shuf_genome'] = shuf_genome
+        results['shuf_seqs'] = shuf
     return results
 
 
