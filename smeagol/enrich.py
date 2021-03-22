@@ -8,11 +8,9 @@ import scipy.stats as stats
 import statsmodels.stats.multitest as multitest
 
 # Smeagol imports
-from .io import write_fasta
+from .io import write_fasta, shuffle_records
 from .encode import MultiSeqEncoding
 from .scan import find_sites_multiseq
-from .utils import shuffle_records
-
 
 
 def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=None):
