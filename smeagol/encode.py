@@ -82,13 +82,13 @@ class SeqEncoding:
         self.reverse_complemented = False
         self.check_equal_lens(records)
         self.len = len(records[0].seq)
-        self.encoded = np.concatenate([integer_encode(record, rcomp=False) for record in records], axis=0)
+        self.seqs = np.concatenate([integer_encode(record, rcomp=False) for record in records], axis=0)
         self.ids = np.array([record.id for record in records])
         self.names = np.array([record.name for record in records])
         self.senses = np.array([sense]*len(records))
         if rcomp:
             rcomp_encoded = np.concatenate([integer_encode(record, rcomp=True) for record in records], axis=0)
-            self.encoded = np.concatenate([self.encoded, rcomp_encoded], axis=0)
+            self.seqs = np.concatenate([self.seqs, rcomp_encoded], axis=0)
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
             self.senses = np.append(self.senses, [sense_complement_dict[sense] for sense in self.senses])
@@ -113,9 +113,9 @@ class MultiSeqEncoding:
     def __init__(self, records, rcomp=False, sense=None, group_by_name=False):
         if (group_by_name) and (len(records)) > 1:
             records = self.group_by_name(records)
-            self.seqs = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
+            self.encoded = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
         else:
-            self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
+            self.encoded = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
     def group_by_name(self, records):
         records_dict = {}
         for record in records:
