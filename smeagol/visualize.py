@@ -15,15 +15,15 @@ from sklearn import manifold
 
 
 def plot_pwm(pwm_df, Matrix_id, height=15):
-    """
-    Function to plot sequence logo from PWM
+    """Function to plot sequence logo from PWM
     
-    Inputs:
-        pwm_df: DF containing cols weight, Matrix_id
+    Args:
+        pwm_df (pd.DataFrame): Dataframe containing cols weight, Matrix_id
         Matrix_id: ID of PWM to plot
     
     Returns:
         Plots PWM
+        
     """
     weights = pwm_df.weight.values[pwm_df.Matrix_id==Matrix_id]
     pm = np.exp2(weights[0])/4
@@ -39,12 +39,13 @@ def plot_ppm(ppm_df, Matrix_id, height=15):
     """
     Function to plot sequence logo from PPM
     
-    Inputs:
-        ppm_df: DF containing cols probs, Matrix_id
+    Args:
+        ppm_df (pd.DataFrame): Dataframe containing cols probs, Matrix_id
         Matrix_id: ID of PWM to plot
     
     Returns:
         Plots PPM
+    
     """
     probs = ppm_df.probs.values[ppm_df.Matrix_id==Matrix_id]
     pm = seqlogo.Ppm(probs[0])
@@ -56,19 +57,19 @@ def plot_ppm(ppm_df, Matrix_id, height=15):
 
 
 def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, rounding=3, file_path=None):
-    """
-    Function to plot distribution of (fractional) binding site scores in real vs. shuffled genomes
+    """Function to plot distribution of (fractional) binding site scores in real vs. shuffled genomes
     
-    Inputs:
-        real_preds: DF containing Matrix_id, sense, bin
-        shuf_preds: DF containing Matrix_id, sense, bin
-        Matrix_id: ID of PWM for which to plot distribution
-        sense: sense of strand for which to plot distribution. If not given, both strands are used.
-        rounding: number of digits to round bin thresholds
-        file_path: path to save figure
+    Args:
+        real_preds (pd.DataFrame): DF containing Matrix_id, sense, bin
+        shuf_preds (pd.DataFrame): DF containing Matrix_id, sense, bin
+        Matrix_id (str): ID of PWM for which to plot distribution
+        sense (str): sense of strand for which to plot distribution. If not given, both strands are used.
+        rounding (int): number of digits to round bin thresholds
+        file_path (str): path to save figure
     
     Returns:
         Plot of binding site counts binned by score.
+        
     """
     real_selected = real_preds[(real_preds.sense==sense) & (real_preds.Matrix_id==Matrix_id)].copy()
     real_selected.bin = np.round(real_selected.bin, rounding)
@@ -91,18 +92,17 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
 
 def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, 
                     background='binomial', figsize=(17,8), ncols=4, file_path=None):
-    """
-    Function to plot the distribution of background counts.
+    """Function to plot the distribution of background counts.
     
-    Inputs:
-        shuf_counts: DF with motif counts in shuffled sequences. 
-        real_counts: DF with motif counts in real sequence.
-        Matrix_ids: IDs of PWMs to plot
-        genome_len: total length of genome. Not needed if background = 'normal'.
-        background: 'binomial', 'normal' or 'both'
-        figsize: total figure size
-        ncols: number of columns for figure panels
-        file_path: path to save figure.
+    Args:
+        shuf_counts (pd.DataFrame): Dataframe with motif counts in shuffled sequences. 
+        real_counts (pd.DataFrame): Dataframe with motif counts in real sequence.
+        Matrix_ids (list): IDs of PWMs to plot
+        genome_len (int): total length of genome. Not needed if background = 'normal'.
+        background (str): 'binomial', 'normal' or 'both'
+        figsize (int): total figure size
+        ncols (int): number of columns for figure panels
+        file_path (str): path to save figure.
     
     Returns:
         Plot of motif distribution in real vs. background sequences.
@@ -148,18 +148,18 @@ def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None,
         
 
 def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
-    """
-    Function to visualize a group of PWMs using t-SNE.
+    """Function to visualize a group of PWMs using t-SNE.
     
-    Inputs:
-        sims: Pairwise similarity matrix for PWMs.
-        labels: PWM IDs.
-        perplexity: parameter for t-SNE
-        clusters: cluster IDs to label points
-        cmap: dictionary mapping cluster IDs to colors
+    Args:
+        sims (np.array): Pairwise similarity matrix for PWMs.
+        labels (list): PWM IDs.
+        perplexity (float): parameter for t-SNE
+        clusters (list): cluster IDs to label points
+        cmap (dict): dictionary mapping cluster IDs to colors
     
     Returns:
-        t-SNE plot
+        t-SNE plot of PWMs
+        
     """
     coords = manifold.TSNE(n_components=2, metric="precomputed", perplexity=perplexity).fit(1-sims).embedding_
     if cmap is not None:
@@ -177,19 +177,19 @@ def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
 
 
 def sliding_window_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_path=None):
-    """
-    Function to visualize enrichment / depletion analysis using sliding windows.
+    """Function to visualize enrichment / depletion analysis using sliding windows.
     
-    Inputs:
-        sliding_window_df: A pandas dataframe that contains the data to plot.
-        x_var: The name of the column that should be used as x-axis. 
-        y_var: The name of the column that should be used as y-axis.
-        xticklabels: The name of the column that contains the x-axis labels.
-        title: The title to be used for the plot.
-        file_path: The path to the file into which the plot should be written.
+    Args:
+        sliding_window_df (pd.DataFrame): A pandas dataframe that contains the data to plot.
+        x_var (str): The name of the column that should be used as x-axis. 
+        y_var (str): The name of the column that should be used as y-axis.
+        xticklabels (str): The name of the column that contains the x-axis labels.
+        title (str): The title to be used for the plot.
+        file_path (str): The path to the file into which the plot should be written.
     
     Returns:
         Sliding window plot. 
+    
     """
 
     # Make sure plt is closed before starting a new one
@@ -215,5 +215,3 @@ def sliding_window_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_pat
 
     if file_path is not None:
         plt.savefig(file_path, transparent=False, facecolor='white', dpi=300)
-
-

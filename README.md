@@ -25,13 +25,14 @@ import smeagol.visualization
 
 Smeagol contains the following modules:
 
-- smeagol.utils: functions to analyze PWMs and PPMs
-- smeagol.visualization: functions to generate plots
+- smeagol.utils: functions to analyze PPMs and PWMs
+- smeagol.io: functions to read and write data
 - smeagol.models: tensorflow encoding of PWMs 
-- smeagol.encoding: functions to encode DNA sequences
-- smeagol.fastaio: functions to read and write FASTA files
-- smeagol.inference: functions to score binding sites 
+- smeagol.encode: functions to encode DNA sequences
+- smeagol.scan: functions to score binding sites 
 - smeagol.enrich: functions to calculate binding site enrichment
+- smeagol.visualize: functions to generate plots
+
 
 
 ## Tutorials

@@ -8,23 +8,25 @@ import scipy.stats as stats
 import statsmodels.stats.multitest as multitest
 
 # Smeagol imports
-from .fastaio import write_fasta
-from .encoding import MultiSeqEncoding
-from .inference import find_sites_multiseq
+from .io import write_fasta
+from .encode import MultiSeqEncoding
+from .scan import find_sites_multiseq
 from .utils import shuffle_records
 
 
 
 def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=None):
-    """
-    Function to calculate enrichment of binding sites in real vs. shuffled genomes
+    """Function to calculate enrichment of binding sites in real vs. shuffled genomes
     
-    Inputs:
-        real_counts: counts of binding sites in real genome
-        shuf_stats: statistics for binding sites across multiple shuffled genomes
+    Args:
+        real_counts (pd.DataFrame): counts of binding sites in real genome
+        shuf_stats (pd.DataFrame): statistics for binding sites across multiple shuffled genomes
+        background (str): 'binomial' or 'normal'
+        seqlen (int): length of input sequence. Only needed if background='binomial'
         
     Returns:
-        enr: DF containing FDR-corrected p-values for enrichment of each PWM.  
+        enr_full (pd.DataFrame): dataframe containing FDR-corrected p-values for enrichment of each PWM.  
+        
     """
     # Compare counts on real and shuffled genomes
     if 'name' in shuf_stats.columns:
@@ -65,25 +67,40 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
     return enr_full
 
 
-def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, background='binomial', verbose=False, combine_seqs=True, method='fast'):
+def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True, method='fast'):
+    """Function to shuffel sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
+        
+    Args:
+        records (list): list of seqrecord objects
+        model (PWMModel): parameterized convolutional model
+        simN (int): number of shuffles
+        simK (int): k-mer frequency to conserve while shuffling
+        rcomp (bool): calculate enrichment in reverse complement as well as original sequence
+        sense (str): '+' or '-'        
+        background (str): 'binomial' or 'normal'
+        verbose (bool): output all information
+        combine_seqs (bool): combine outputs for multiple sequences into single dataframe
+        method (str): 'fast' or 'lowmem'
+        
+    Returns:
+        results (dict): dictionary containing results.  
+        
     """
-    Function to calculate enrichment of PWMs in a sequence relative to a shuffled background.
-    """
-    # Encode genome
-    encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=genome_sense)
+    # Encode sequence
+    encoded = MultiSeqEncoding(records, rcomp=rcomp, sense=sense)
     # Find sites on real genome
-    real_preds = find_sites_multiseq(encoded_genome, model, threshold, sites=True, total_counts=True, combine_seqs=combine_seqs)
+    real_preds = find_sites_multiseq(encoded, model, threshold, sites=True, total_counts=True, combine_seqs=combine_seqs)
     # Shuffle genome
-    shuf_genome = shuffle_records(genome, simN, simK)
+    shuf_records = shuffle_records(records, simN, simK)
     # Encode shuffled genomes
-    encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=genome_sense, rcomp=rcomp, group_by_name=True)
+    encoded_shuffled = MultiSeqEncoding(shuf_records, sense=sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
     shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=verbose, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
     # Calculate binding site enrichment
     if background == 'normal':
         enr = enrich_over_shuffled(real_preds['total_counts'], shuf_preds['stats'], background=background)
     elif background == 'binomial' or background == 'both':
-        seqlen = sum([len(x) for x in genome])
+        seqlen = sum([len(x) for x in records])
         enr = enrich_over_shuffled(real_preds['total_counts'], shuf_preds['stats'], background=background, seqlen=seqlen)
     # Combine results
     results = {'enrichment': enr, 
@@ -97,8 +114,17 @@ def enrich_in_genome(genome, model, simN, simK, rcomp, genome_sense, threshold, 
 
 
 def enrich_in_window(real_sites, genome, sel_id, sel_start, sel_end):
-    """
-    Function to calculate enrichment of PWMs in subsequence relative to total sequence.
+    """Function to calculate enrichment of PWMs in subsequence relative to total sequence.
+    
+    Args:
+        real_sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        sel_id (str): selected sequence ID in genome
+        sel_start (int): selected start position of window
+        sel_end (int): selected end position of window
+    
+    Returns:
+        result (pd.DataFrame): Dataframe containing result of enrichment analysis in selected window.
     """
     # Calculate total number of successes and failures over genome
     tot_len = sum([len(x) for x in genome])
@@ -126,18 +152,39 @@ def enrich_in_window(real_sites, genome, sel_id, sel_start, sel_end):
 
 
 def get_tiling_windows_over_record(record, width, shift):
+    """Function to get tiling windows over a sequence.
+    
+    Args:
+        record (SeqRecord): SeqRecord object
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        result (list): windows covering input sequence
+        
     """
-    Function to get tiling windows over a sequence.
-    """
+    # Get start positions
     starts = list(range(0, len(record), shift))
+    # Get end positions
     ends = [np.min([x + width, len(record)]) for x in starts]
+    # Add sequence ID
     idxs = np.tile(record.id, len(starts))
-    return [x for x in zip(idxs, starts, ends)]
+    # Combine
+    result = [x for x in zip(idxs, starts, ends)]
+    return result
 
 
 def get_tiling_windows_over_genome(genome, width, shift):
-    """
-    Function to get tiling windows over a genome.
+    """Function to get tiling windows over a genome.
+        
+    Args:
+        genome (list): list of SeqRecord objects
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        windows (list): windows covering all sequences in genome
+        
     """
     if len(genome) == 1:
         windows = get_tiling_windows_over_record(genome[0], width, shift)
@@ -148,8 +195,17 @@ def get_tiling_windows_over_genome(genome, width, shift):
 
 
 def enrich_in_sliding_windows(real_sites, genome, width, shift):
-    """
-    Function to test enrichment of binding sites in sliding windows across a genome.
+    """Function to test enrichment of binding sites in sliding windows across a genome.
+     
+    Args:
+        real_sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        results (pd.DataFrame): results of enrichment analysis in windows covering all sequences in genome
+        
     """
     # Get sliding windows across genome
     windows = get_tiling_windows_over_genome(genome, width, shift)
@@ -165,17 +221,31 @@ def enrich_in_sliding_windows(real_sites, genome, width, shift):
     return results
 
 
-def examine_thresholds(genome, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True):
+def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True, method='fast'):
+    """Function to compare the number of binding sites at various thresholds.
+            
+    Args:
+        records (list): list of seqrecord objects
+        model (PWMModel): parameterized convolutional model
+        simN (int): number of shuffles
+        simK (int): k-mer frequency to conserve while shuffling
+        rcomp (bool): calculate enrichment in reverse complement as well as original sequence
+        sense (str): '+' or '-'        
+        min_threshold (float): minimum threshold for a binding site (0 to 1)
+        verbose (bool): output all information
+        combine_seqs (bool): combine outputs for multiple sequences into single dataframe
+        method (str): 'fast' or 'lowmem'
+        
+    Returns:
+        results (dict): dictionary containing results. 
     """
-    Function to compare number of binding sites at various thresholds.
-    """
-    encoded_genome = MultiSeqEncoding(genome, rcomp=rcomp, sense=sense)
-    shuf_genome = shuffle_records(genome, simN, simK)
-    encoded_shuffled = MultiSeqEncoding(shuf_genome, sense=sense, rcomp=rcomp, group_by_name=True)
+    encoded = MultiSeqEncoding(records, rcomp=rcomp, sense=sense)
+    shuf = shuffle_records(records, simN, simK)
+    encoded_shuffled = MultiSeqEncoding(shuf, sense=sense, rcomp=rcomp, group_by_name=True)
     thresholds = np.arange(min_threshold, 1.0, 0.1)
-    real_binned = find_sites_multiseq(encoded_genome, model, thresholds, binned_counts=True, combine_seqs=combine_seqs)['binned_counts']
-    shuf_binned = find_sites_multiseq(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True)['binned_counts']
+    real_binned = find_sites_multiseq(encoded, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, method=method)['binned_counts']
+    shuf_binned = find_sites_multiseq(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True, method=method)['binned_counts']
     results = {'real_binned':real_binned, 'shuf_binned': shuf_binned}
     if verbose:
-        results['shuf_genome'] = shuf_genome
+        results['shuf_genome'] = shuf
     return results
