@@ -5,11 +5,11 @@ import numpy as np
 import itertools
 
 
-def predict(encoded, model, threshold, score=False, method="fast"):
+def predict(encoding, model, threshold, score=False, method="fast"):
     """Prediction by scanning an encoded sequence with a convolutional model.
     
     Args:
-        encoded (SeqEncoding): SeqEncoding object
+        encoding (SeqEncoding): SeqEncoding object
         model (model): Prameterized convolutional model
         threshold (float): fraction of maximum score to use as binding site detection threshold
         score (bool): Output binding site scores as well as positions
@@ -22,7 +22,7 @@ def predict(encoded, model, threshold, score=False, method="fast"):
         
     """
     thresholds = threshold * model.max_scores
-    predictions = model.predict(encoded.seqs)
+    predictions = model.predict(encoding.seqs)
     if method == "lowmem" and isinstance(predictions, list):
         thresholded, scores = threshold_lowmem(predictions, thresholds, score)
     else:
