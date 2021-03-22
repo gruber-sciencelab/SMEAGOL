@@ -245,5 +245,5 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
     shuf_binned = find_sites_multiseq(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True, method=method)['binned_counts']
     results = {'real_binned':real_binned, 'shuf_binned': shuf_binned}
     if verbose:
-        results['shuf_genome'] = shuf
+        results['shuf_seqs'] = shuf
     return results
