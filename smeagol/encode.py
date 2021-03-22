@@ -113,9 +113,9 @@ class MultiSeqEncoding:
     def __init__(self, records, rcomp=False, sense=None, group_by_name=False):
         if (group_by_name) and (len(records)) > 1:
             records = self.group_by_name(records)
-            self.encoded = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
+            self.seqs = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
         else:
-            self.encoded = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
+            self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
     def group_by_name(self, records):
         records_dict = {}
         for record in records:
