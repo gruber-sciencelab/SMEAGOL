@@ -111,114 +111,6 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     return results
 
 
-def enrich_in_window(real_sites, genome, sel_id, sel_start, sel_end):
-    """Function to calculate enrichment of PWMs in subsequence relative to total sequence.
-    
-    Args:
-        real_sites (pd.DataFrame): dataframe containing locations of binding sites
-        genome (list): list of SeqRecord objects
-        sel_id (str): selected sequence ID in genome
-        sel_start (int): selected start position of window
-        sel_end (int): selected end position of window
-    
-    Returns:
-        result (pd.DataFrame): Dataframe containing result of enrichment analysis in selected window.
-    """
-    # Calculate total number of successes and failures over genome
-    tot_len = sum([len(x) for x in genome])
-    tot_count = len(real_sites)
-    tot_neg = tot_len - tot_count
-    # Calculate number of successes and failures in selected region
-    window_len = sel_end - sel_start
-    sel_count = len(real_sites[(real_sites.id==sel_id) & (real_sites.start>=sel_start) & (real_sites.end<=sel_end)])
-    sel_neg = window_len - sel_count
-    # Expected value
-    exp = (tot_count*window_len)/tot_len
-    # Fisher's exact test
-    odds, p = stats.fisher_exact([[sel_count, sel_neg], [tot_count, tot_neg]], alternative='two-sided')
-    # Make combined dataframe
-    #result = pd.DataFrame()
-    result = {'start': [sel_start],
-              'end': [sel_end],
-              'count': [sel_count],
-              'tot_count': [tot_count],
-              'expected': [exp],
-              'odds': [odds],
-              'p': [p]}
-    result = pd.DataFrame.from_dict(result)
-    return result
-
-
-def get_tiling_windows_over_record(record, width, shift):
-    """Function to get tiling windows over a sequence.
-    
-    Args:
-        record (SeqRecord): SeqRecord object
-        width (int): width of tiling windows
-        shift (int): shift between successive windows
-    
-    Returns:
-        result (list): windows covering input sequence
-        
-    """
-    # Get start positions
-    starts = list(range(0, len(record), shift))
-    # Get end positions
-    ends = [np.min([x + width, len(record)]) for x in starts]
-    # Add sequence ID
-    idxs = np.tile(record.id, len(starts))
-    # Combine
-    result = [x for x in zip(idxs, starts, ends)]
-    return result
-
-
-def get_tiling_windows_over_genome(genome, width, shift):
-    """Function to get tiling windows over a genome.
-        
-    Args:
-        genome (list): list of SeqRecord objects
-        width (int): width of tiling windows
-        shift (int): shift between successive windows
-    
-    Returns:
-        windows (list): windows covering all sequences in genome
-        
-    """
-    if len(genome) == 1:
-        windows = get_tiling_windows_over_record(genome[0], width, shift)
-    else:
-        windows = [get_tiling_windows_over_record(record, width, shift) for record in genome]
-        windows = list(itertools.chain.from_iterable(windows))
-    return windows
-
-
-def enrich_in_sliding_windows(real_sites, genome, width, shift):
-    """Function to test enrichment of binding sites in sliding windows across a genome.
-     
-    Args:
-        real_sites (pd.DataFrame): dataframe containing locations of binding sites
-        genome (list): list of SeqRecord objects
-        width (int): width of tiling windows
-        shift (int): shift between successive windows
-    
-    Returns:
-        results (pd.DataFrame): results of enrichment analysis in windows covering all sequences in genome
-        
-    """
-    # Get sliding windows across genome
-    windows = get_tiling_windows_over_genome(genome, width, shift)
-    results = pd.DataFrame()
-    # Perform enrichment in each window
-    for window in windows:
-        result = enrich_in_window(real_sites, genome, window[0], window[1], window[2])
-        result['id'] = window[0]
-        results = pd.concat([results, result])
-    # Overall FDR correction
-    results['padj'] = multitest.fdrcorrection(results.p)[1]
-    results.reset_index(inplace=True, drop=True)
-    return results
-
-
 def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True, method='fast'):
     """Function to compare the number of binding sites at various thresholds.
             
@@ -247,3 +139,139 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
     if verbose:
         results['shuf_seqs'] = shuf
     return results
+
+
+# Analysis in windows
+
+def get_tiling_windows_over_record(record, width, shift):
+    """Function to get tiling windows over a sequence.
+    
+    Args:
+        record (SeqRecord): SeqRecord object
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        windows (pd.DataFrame): windows covering input sequence
+        
+    """
+    # Get start positions
+    starts = list(range(0, len(record), shift))
+    # Get end positions
+    ends = [np.min([x + width, len(record)]) for x in starts]
+    # Add sequence ID
+    idxs = np.tile(record.id, len(starts))
+    # Combine
+    windows = pd.DataFrame({'id':idxs, 'start':starts, 'end':ends})
+    return windows
+
+
+def get_tiling_windows_over_genome(genome, width, shift=None):
+    """Function to get tiling windows over a genome.
+        
+    Args:
+        genome (list): list of SeqRecord objects
+        width (int): width of tiling windows
+        shift (int): shift between successive windows. By default the same as width.
+    
+    Returns:
+        windows (pd.DataFrame): windows covering all sequences in genome
+        
+    """
+    if shift is None:
+        shift = width
+    if len(genome) == 1:
+        windows = get_tiling_windows_over_record(genome[0], width, shift)
+    else:
+        windows = pd.concat([get_tiling_windows_over_record(record, width, shift) for record in genome])
+    return windows
+
+
+def count_in_window(window, sites, genome, matrix_id):
+    """Function to calculate count of PWMs in subsequence.
+    
+    Args:
+        window (pd.DataFrame): dataframe with columns id, start, end
+        sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        matrix_id (str): selected PWM
+    
+    Returns:
+        count (int): Number of binding sites for given PWM in selected window.
+
+    """
+    count = len(sites[(sites.Matrix_id==matrix_id) & (sites.id==window.id) & (sites.start>=window.start) & (sites.start<window.end)])
+    return count
+
+
+def enrich_in_window(window, sites, genome, matrix_id):
+    """Function to calculate enrichment of PWMs in subsequence relative to total sequence.
+    
+    Args:
+        window (pd.DataFrame): dataframe with columns id, start, end
+        sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        matrix_id (str): selected PWM
+        
+    Returns:
+        result (pd.DataFrame): Dataframe containing result of enrichment analysis in selected window.
+    
+    """
+    result = window.copy()
+    # Calculate number of successes and failures in selected region
+    result['len'] = window.end - window.start
+    result['count'] = count_in_window(window, sites, genome, matrix_id)
+    count_neg = result['len'] - result['count']
+    # Calculate number of successes and failures in whole genome
+    tot_len = sum([len(x) for x in genome])
+    result['tot_count'] = len(sites[sites.Matrix_id == matrix_id])
+    tot_neg = tot_len - result.tot_count
+    # Expected value
+    result['expected'] = (result.tot_count * result.len)/tot_len
+    # Fisher's exact test
+    odds, p = stats.fisher_exact([[result['count'], count_neg], [result.tot_count, tot_neg]], alternative='two-sided')
+    result['odds'] = odds
+    result['p'] = p
+    return result
+
+
+def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
+    """Function to count binding sites in sliding windows across a genome.
+     
+    Args:
+        sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        matrix_id (str): selected PWM
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        results (pd.DataFrame): dataframe containing number of binding sites per window
+        
+    """
+    windows = get_tiling_windows_over_genome(genome, width, shift)
+    windows[matrix_id] = windows.apply(count_in_window, axis=1, args=(sites, genome, matrix_id))
+    return windows
+
+
+def enrich_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
+    """Function to test enrichment of binding sites in sliding windows across a genome.
+     
+    Args:
+        sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        matrix_id (str): selected PWM
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        windows (pd.DataFrame): results of enrichment analysis in windows covering all sequences in genome
+        
+    """
+    # Get sliding windows across genome
+    windows = get_tiling_windows_over_genome(genome, width, shift)
+    # Perform enrichment in each window
+    windows = windows.apply(enrich_in_window, axis=1, args=(sites, genome, matrix_id)).reset_index(drop=True)
+    # Overall FDR correction
+    windows['padj'] = multitest.fdrcorrection(windows.p)[1]
+    return windows
