@@ -8,16 +8,11 @@ import itertools
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-# Biasaway imports
-from biasaway.utils import GC, dinuc_count, IUPAC_DINUC
-from ushuffle import shuffle, set_seed
-
 # I/O imports
 import h5py
 import gzip
 from mimetypes import guess_type
 from functools import partial
-from .fastaio import write_fasta
 
 # Stats imports
 from sklearn.cluster import AgglomerativeClustering
