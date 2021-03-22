@@ -3,20 +3,28 @@ import pandas as pd
 import tensorflow as tf
 from keras import Model
 from keras.layers import Conv1D, Input, Concatenate, Embedding, Reshape
-from .encoding import one_hot_dict
+from .encode import one_hot_dict
 
 # Define convolutional model
 
 class PWMModel:
+    """Class to contain convolutional model.
+    
+    Args:
+        pwm_df (pd.DataFrame): dataframe containing PWM IDs and weights.
+    """
     def __init__(self, pwm_df):
         df = pwm_df.copy()
+        # Split PWMs by their width
         df['width'] = df.weight.apply(lambda x:x.shape[0])
         df = df.sort_values('width').reset_index(drop=True)
+        # Store information
         self.Matrix_ids = np.array(df.Matrix_id)
         self.widths = np.array(df.width)
         self.unique_widths = np.unique(self.widths)
         self.weights = np.array(df.weight)
-        self.max_scores = np.array(df.weight.apply(lambda x:np.max(x, axis=1).sum())) 
+        self.max_scores = np.array(df.weight.apply(lambda x:np.max(x, axis=1).sum()))
+        # Create model.
         self.get_conv_model()
     def get_conv_model(self):
         # One-hot encode the sequence
