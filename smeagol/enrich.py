@@ -250,7 +250,7 @@ def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
         
     """
     windows = get_tiling_windows_over_genome(genome, width, shift)
-    windows[matrix_id] = windows.apply(count_in_window, axis=1, args=(sites, genome, matrix_id))
+    windows['count'] = windows.apply(count_in_window, axis=1, args=(sites, genome, matrix_id))
     windows.reset_index(inplace=True, drop=True)
     return windows
 
