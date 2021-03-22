@@ -22,7 +22,7 @@ def predict(encoded, model, threshold, score=False, method="fast"):
         
     """
     thresholds = threshold * model.max_scores
-    predictions = model.predict(encoding.seqs)
+    predictions = model.predict(encoded.seqs)
     if method == "lowmem" and isinstance(predictions, list):
         thresholded, scores = threshold_lowmem(predictions, thresholds, score)
     else:
