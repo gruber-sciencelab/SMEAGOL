@@ -176,12 +176,13 @@ def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
     plt.show()
 
 
-def sliding_window_count_plot(df, title, file_path=None):
+def sliding_window_count_plot(df, title, cols=3, file_path=None):
     """Function to visualize site counts using sliding windows.
     
     Args:
         df (pd.DataFrame): A pandas dataframe that contains the data to plot.
         title (str): The title to be used for the plot.
+        cols (int): number of columns for plot
         file_path (str): The path to the file into which the plot should be written.
     
     Returns:
@@ -199,7 +200,7 @@ def sliding_window_count_plot(df, title, file_path=None):
     
     with sns.plotting_context("notebook", font_scale=1):
         g = sns.catplot(x='window', y="count", row_order='group_order', col="id", data=dfc, kind="bar", 
-                    height=4, col_wrap=4, sharex=False, sharey=False, color='blue')
+                    height=4, col_wrap=cols, sharex=False, sharey=False, color='blue')
         g.set_xticklabels(rotation=45)
         plt.suptitle(title)
         plt.tight_layout()
