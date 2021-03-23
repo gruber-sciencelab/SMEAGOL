@@ -201,7 +201,7 @@ def sliding_window_count_plot(df, title, cols=3, file_path=None):
     with sns.plotting_context("notebook", font_scale=1):
         g = sns.catplot(x='window', y="count", row_order='group_order', col="id", data=dfc, kind="bar", 
                     height=4, col_wrap=cols, sharex=False, sharey=False, color='blue')
-        g.set_xticklabels(rotation=45)
+        g.set_xticklabels(rotation=90)
         plt.suptitle(title)
         plt.tight_layout()
 
