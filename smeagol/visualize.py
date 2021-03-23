@@ -176,13 +176,14 @@ def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
     plt.show()
 
 
-def sliding_window_count_plot(df, title, cols=3, file_path=None):
+def sliding_window_count_plot(df, title, cols=3, aspect=1.4, file_path=None):
     """Function to visualize site counts using sliding windows.
     
     Args:
         df (pd.DataFrame): A pandas dataframe that contains the data to plot.
         title (str): The title to be used for the plot.
         cols (int): number of columns for plot
+        aspect (float): width/height
         file_path (str): The path to the file into which the plot should be written.
     
     Returns:
@@ -200,7 +201,7 @@ def sliding_window_count_plot(df, title, cols=3, file_path=None):
     
     with sns.plotting_context("notebook", font_scale=1):
         g = sns.catplot(x='window', y="count", row_order='group_order', col="id", data=dfc, kind="bar", 
-                    height=4, col_wrap=cols, sharex=False, sharey=False, color='blue')
+                    height=4, aspect=aspect, col_wrap=cols, sharex=False, sharey=False, color='blue')
         g.set_xticklabels(rotation=90)
         plt.suptitle(title)
         plt.tight_layout()
@@ -229,11 +230,11 @@ def sliding_window_enrichment_plot(sliding_window_df,x_var,y_var,xticklabels,tit
     plt.close()
     
     # Set the size of the plot
-    plt.figure(figsize=(12, 4))
+    plt.figure(figsize=(12, 5))
     
     #sig_sorted = sliding_window_df.sort_values(y_var)['sig']
 
-    barplot = sns.barplot(x=x_var, y=y_var, data=sliding_window_df, color='gray')
+    barplot = sns.barplot(x=x_var, y=y_var, data=sliding_window_df, color='blue')
     barplot.set_xticklabels(labels=sliding_window_df[xticklabels], rotation=90)
     barplot.get_xticklabels()
     barplot.set(xlabel="Viral genome region (start - end)[nt]", ylabel = "Site counts")
