@@ -176,7 +176,39 @@ def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
     plt.show()
 
 
-def sliding_window_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_path=None):
+def sliding_window_count_plot(df, title, file_path=None):
+    """Function to visualize site counts using sliding windows.
+    
+    Args:
+        df (pd.DataFrame): A pandas dataframe that contains the data to plot.
+        title (str): The title to be used for the plot.
+        file_path (str): The path to the file into which the plot should be written.
+    
+    Returns:
+        Sliding window plot. 
+    
+    """
+
+    # Make sure plt is closed before starting a new one
+    plt.close()
+    
+    # Get window labels and order
+    dfc = df.copy()
+    dfc['window'] = df.apply(lambda row: str(row.start)+'-'+str(row.end), axis=1)
+    dfc['group_order'] = np.concatenate([list(range(x)) for x in df.id.value_counts()])
+    
+    with sns.plotting_context("notebook", font_scale=1):
+        g = sns.catplot(x='window', y="count", row_order='group_order', col="id", data=dfc, kind="bar", 
+                    height=4, col_wrap=4, sharex=False, sharey=False, color='blue')
+        g.set_xticklabels(rotation=45)
+        plt.suptitle(title)
+        plt.tight_layout()
+
+    if file_path is not None:
+        plt.savefig(file_path, transparent=False, facecolor='white', dpi=300)
+
+
+def sliding_window_enrichment_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_path=None):
     """Function to visualize enrichment / depletion analysis using sliding windows.
     
     Args:
