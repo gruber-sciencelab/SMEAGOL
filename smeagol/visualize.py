@@ -294,7 +294,7 @@ def plot_clustermap(foldchanges, pvalues, threshold=0.05, row_cluster=True, dend
         sns_plot.savefig(file_path, dpi=300)     
     
     
-def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, group_by=None, plot=None, min_occ=3, row_cluster=True, dendogram=True, file_path=None):
+def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, group_by=None, drop_zeros=False, plot=None, min_occ=3, cluster=True, col_cluster=True, row_cluster=True, dendogram=True, col_dendogram=True, row_dendogram=True, file_path=None):
     """ Function to plot clustermap of foldchanges and pwms, with annotation and more parameters
     
     Args: 
@@ -304,10 +304,15 @@ def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, g
         column (str):  which column contains the name to be used as labels on the plot
         threshold (float): threshold for pvalues. default 0.05
         group_by (str): extra column in annot table that groups the occurrences (ex. Genus, Family, Kingdom, Host, etc) (Default: None). If no group_by function was provided but column parameter is "Species", we try to cluster species by "Genus" using the first word of Species.
+        drop_zeros (bool): if True, drops all columns and rows in which all values are zero (Default: False)         
         plot (str): 'sep' if you wish to separate the plots according to the groups provided in group_by (Default: None)
         min_occ (int): min number of occurrences within a group (defined by group_by) to plot separately if plot="sep"
-        row_cluster (bool): Cluster rows. Default True
-        dendogram (bool): Plot dendograms. Default True
+        cluster (bool): Clusters both columns and rows (Default: True)
+        col_cluster (bool): Cluster columns (Default: True)
+        row_cluster (bool): Cluster rows (Default: True)
+        dendogram (bool): Plot both row and col dendograms (Default: True)
+        row_dendogram (bool): Plot row dendograms (Default: True)
+        col_dendogram (bool): Plot column dendograms (Default: True)
         file_path (str): The path to the file into which the plot should be written.
     
     Returns:
@@ -321,6 +326,10 @@ def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, g
     log2fc=np.log2(foldchanges)
     log2fc = log2fc.fillna(0)
     log2fc[pvalues>threshold]=0
+    
+    # Drop columns and rows with only zeros:
+    if drop_zeros == True:
+        log2fc=log2fc.loc[(log2fc.sum(axis=1) != 0), (log2fc.sum(axis=0) != 0)]
     
     # Merge log2fc with annotation table
     plot_df=pd.merge(annot,log2fc.transpose(),how="right",left_index=True,right_index=True)
@@ -354,13 +363,21 @@ def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, g
     height=len(plot_df)*0.25 ### height of figure depends on how many rows
     width=max*0.2            ### width of figure depends on how many columns
     
+    ### Clustering on or off
+    if cluster==False:
+        row_cluster=False
+        col_cluster=False
+   
     # Create clustermap plot
-    sns_plot = sns.clustermap(plot_df.iloc[:,min:max], row_cluster=row_cluster, cmap=cmap,cbar_kws=cbar_kws,xticklabels=1,yticklabels=plot_df[column],row_colors=row_colors,figsize=(width,height),center=0)
+    sns_plot = sns.clustermap(plot_df.iloc[:,min:max], col_cluster=col_cluster, row_cluster=row_cluster, cmap=cmap,cbar_kws=cbar_kws,xticklabels=1,yticklabels=plot_df[column],row_colors=row_colors,figsize=(width,height),center=0)
     
     # Show dendogram
-    sns_plot.ax_col_dendrogram.set_visible(dendogram)
-    sns_plot.ax_row_dendrogram.set_visible(dendogram)
-    
+    if dendogram == False :
+        col_dendogram=False
+        row_dendogram=False    
+    sns_plot.ax_col_dendrogram.set_visible(col_dendogram)
+    sns_plot.ax_row_dendrogram.set_visible(row_dendogram)
+ 
     # If user defined "group_by" for annotation, include legend
     if flag == 0 :
         from matplotlib.patches import Patch
