@@ -248,4 +248,139 @@ def sliding_window_enrichment_plot(sliding_window_df,x_var,y_var,xticklabels,tit
     plt.tight_layout()
 
     if file_path is not None:
-        plt.savefig(file_path, transparent=False, facecolor='white', dpi=300)
+        plt.savefig(file_path, transparent=False, facecolor='white', dpi=300)        
+
+
+def plot_clustermap(foldchanges, pvalues, threshold=0.05, row_cluster=True, dendogram=True, file_path=None):
+    """Simple function to plot clustermap of foldchanges and pwms (without annotation); function will filter foldchanges whenever pvalues are significant.
+
+    Args: 
+        foldchanges (np.array): matrix of foldchanges for enrichment and depletion of pwms
+        pvalues (np.array): matrix of pvalues for enrichment of the same pwms
+        threshold (float): threshold for pvalues. default 0.05
+        row_cluster (bool): Cluster rows. Default True
+        dendogram (bool): Plot dendograms. Default True
+        file_path (str): The path to the file into which the plot should be written.
+    
+    Returns:
+        heatmap plot.
+    """
+    np.seterr(divide = 'ignore')
+    
+    # Create log2FC tables based on foldchanges and significant pvalues
+    log2fc = np.log2(foldchanges)
+    log2fc = log2fc.fillna(0)
+    log2fc[pvalues>threshold] = 0
+
+    # Transpose (species as rows and columns as pwms)
+    plot_df = log2fc.transpose()    
+
+    # Parameters for plot
+    cbar_kws = {'extend':'both'}
+    cmap = plt.get_cmap(sns.diverging_palette(220, 20,as_cmap=True))
+    cmap.set_under('navy')
+    cmap.set_over('darkred')
+    height = len(plot_df)*0.25
+    
+    # Create clustermap plot and save pdf
+    sns_plot = sns.clustermap(plot_df, cmap=cmap, cbar_kws=cbar_kws, row_cluster=row_cluster, xticklabels=1, yticklabels=1, figsize=(35,height),center=0)
+
+    # Show dendogram
+    sns_plot.ax_col_dendrogram.set_visible(dendogram)
+    sns_plot.ax_row_dendrogram.set_visible(dendogram)
+
+    plt.show()
+    if file_path is not None:
+        sns_plot.savefig(file_path, dpi=300)     
+    
+    
+def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, group_by=None, plot=None, min_occ=3, row_cluster=True, dendogram=True, file_path=None):
+    """ Function to plot clustermap of foldchanges and pwms, with annotation and more parameters
+    
+    Args: 
+        foldchanges (np.array): matrix of foldchanges for enrichment and depletion of pwms
+        pvalues (np.array): matrix of pvalues for enrichment of the same pwms
+        annot (pd.DataFrame): annotation table with information on each column of pwm matrix
+        column (str):  which column contains the name to be used as labels on the plot
+        threshold (float): threshold for pvalues. default 0.05
+        group_by (str): extra column in annot table that groups the occurrences (ex. Genus, Family, Kingdom, Host, etc) (Default: None). If no group_by function was provided but column parameter is "Species", we try to cluster species by "Genus" using the first word of Species.
+        plot (str): 'sep' if you wish to separate the plots according to the groups provided in group_by (Default: None)
+        min_occ (int): min number of occurrences within a group (defined by group_by) to plot separately if plot="sep"
+        row_cluster (bool): Cluster rows. Default True
+        dendogram (bool): Plot dendograms. Default True
+        file_path (str): The path to the file into which the plot should be written.
+    
+    Returns:
+        annotated heatmap plot.
+
+    """
+        
+    np.seterr(divide = 'ignore')
+    
+    # Create log2FC tables based on foldchanges and significant pvalues
+    log2fc=np.log2(foldchanges)
+    log2fc = log2fc.fillna(0)
+    log2fc[pvalues>threshold]=0
+    
+    # Merge log2fc with annotation table
+    plot_df=pd.merge(annot,log2fc.transpose(),how="right",left_index=True,right_index=True)
+    
+    flag=0 ### Flag to check if user defined "group_by"
+    
+    ### If user did not define "group_by" for annotation, and column is Species, try to create a group 'Genus' based on the first word of Species
+    if group_by == None :
+        flag=1 ### Change flag to not include legend later unless user defines the column
+        if column == "Species" : 
+            ### Create column as genus
+            plot_df['Genus'] = plot_df['Species'].str.split(' ').str[0]
+            group_by='Genus'
+        else :
+            group_by=column
+
+    # Order dataframe by "group_by" (or column if "group_by" does not exist)
+    plot_df = plot_df.sort_values(by=group_by)
+    
+    # Create colors for annotation in "group_by" (or column if "group_by" does not exist)
+    lut = dict(zip(plot_df[group_by].unique(), sns.hls_palette(len(plot_df[group_by].unique()))))
+    row_colors = plot_df[group_by].map(lut)
+    
+    # Parameters for plot
+    cbar_kws = {'extend':'both'}    
+    cmap=plt.get_cmap(sns.diverging_palette(220, 20,as_cmap=True))
+    cmap.set_under('navy')
+    cmap.set_over('darkred')
+    min=len(annot.columns)
+    max=len(plot_df.columns)    
+    height=len(plot_df)*0.25 ### height of figure depends on how many rows
+    width=max*0.2            ### width of figure depends on how many columns
+    
+    # Create clustermap plot
+    sns_plot = sns.clustermap(plot_df.iloc[:,min:max], row_cluster=row_cluster, cmap=cmap,cbar_kws=cbar_kws,xticklabels=1,yticklabels=plot_df[column],row_colors=row_colors,figsize=(width,height),center=0)
+    
+    # Show dendogram
+    sns_plot.ax_col_dendrogram.set_visible(dendogram)
+    sns_plot.ax_row_dendrogram.set_visible(dendogram)
+    
+    # If user defined "group_by" for annotation, include legend
+    if flag == 0 :
+        from matplotlib.patches import Patch
+        handles1 = [Patch(facecolor=lut[name]) for name in lut]
+        plt.legend(handles1, lut, title=group_by,
+               bbox_to_anchor=(1, 1), bbox_transform=plt.gcf().transFigure, loc='upper right')
+
+    # Plot and save pdf    
+    plt.show()  
+    sns_plot.savefig(file_path)
+ 
+    # If you want separate plots for "group_by" annotation include plot = "sep"
+    # row_cluster parameter was not included here, default is True
+    if plot == "sep":
+        k=len(plot_df[group_by].unique())
+        for i in range(0, k):
+            col2 = plot_df[group_by].unique()[i]
+            df = plot_df.loc[plot_df[group_by]==col2]
+            if len(df)>min_occ:
+                height = len(df)*0.5
+                sns_col2_plot = sns.clustermap(df.iloc[:,min:max], cmap=cmap,cbar_kws=cbar_kws,xticklabels=1,yticklabels=df[column],figsize=(width,height),row_colors=row_colors,center=0)
+                plt.show()
+                sns_col2_plot.savefig(col2 + "_Significant_Log2FC.pdf")
