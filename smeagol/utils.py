@@ -18,7 +18,7 @@ from functools import partial
 from sklearn.cluster import AgglomerativeClustering
 
 # Viz imports
-from .visualization import plot_pwm_similarity
+from .visualize import plot_pwm_similarity
 
 
 # PPM/PWM analysis
