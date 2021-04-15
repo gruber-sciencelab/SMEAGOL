@@ -277,7 +277,7 @@ def plot_clustermap(foldchanges, pvalues, threshold=0.05, row_cluster=True, dend
 
     # Parameters for plot
     cbar_kws = {'extend':'both'}
-    cmap = plt.get_cmap(sns.diverging_palette(220, 20,as_cmap=True))
+    cmap = plt.get_cmap(sns.diverging_palette(240, 0, l=30, s=100,as_cmap=True))
     cmap.set_under('navy')
     cmap.set_over('darkred')
     height = len(plot_df)*0.25
@@ -355,7 +355,7 @@ def plot_clustermap_annot(foldchanges, pvalues, annot, column, threshold=0.05, g
     
     # Parameters for plot
     cbar_kws = {'extend':'both'}    
-    cmap=plt.get_cmap(sns.diverging_palette(220, 20,as_cmap=True))
+    cmap=plt.get_cmap(sns.diverging_palette(240, 0, l=30, s=100,as_cmap=True))
     cmap.set_under('navy')
     cmap.set_over('darkred')
     min=len(annot.columns)
