@@ -18,7 +18,7 @@ from functools import partial
 from sklearn.cluster import AgglomerativeClustering
 
 # Viz imports
-from .visualization import plot_pwm_similarity
+from .visualize import plot_pwm_similarity
 
 
 # PPM/PWM analysis
@@ -135,15 +135,14 @@ def cos_sim(a, b):
     return result   
 
 
-def row_wise_equal_matrix_similarity(X, Y, metric='cosine'):
+def matrix_correlation(X, Y):
     """Function to calculate per-position similarity between two equal-sized matrices.
     
     Args:
         X, Y (np.array): two numpy arrays with same shape
-        metric (str): 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
         
     Returns:
-        row_wise_sims (list): row (position)-wise similarity between X and Y
+        corr (float): correlation between X and Y
         
     Raises:
         ValueError: if X and Y do not have equal shapes.
@@ -151,27 +150,22 @@ def row_wise_equal_matrix_similarity(X, Y, metric='cosine'):
     """
     if X.shape != Y.shape:
         raise ValueError('inputs do not have equal shapes.')
-    if metric == 'corr':
-        row_wise_sims = [np.corrcoef(X[i], Y[i])[0,1] for i in range(X.shape[0])]
-    elif metric == 'cosine':
-        row_wise_sims = [cos_sim(X[i], Y[i]) for i in range(X.shape[0])]
-    return row_wise_sims
+    corr = np.corrcoef(np.concatenate(X), np.concatenate(Y))[0,1]
+    return corr
     
 
-def matrix_similarity(X, Y, metric='cosine', min_overlap=None, pad=False):
-    """Function to calculate similarity between two position matrices.
+def ncorr(X, Y, min_overlap=None):
+    """Function to calculate normalized correlation between two position matrices.
     
     Inputs:
         X, Y (np.array): two position matrices.
-        metric (str): 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
         min_overlap (int): minimum overlap allowed between matrices
-        pad (bool): if one matrix is shorter, count 0 similarity between empty positions
         
     Returns:
-        result (float): similarity value
+        result (float): normalized correlation value
     """
     # X should be the shorter matrix
-    sims = []
+    ncorrs = []
     Ly = len(Y)
     Lx = len(X)
     if Ly < Lx:
@@ -185,11 +179,6 @@ def matrix_similarity(X, Y, metric='cosine', min_overlap=None, pad=False):
     if min_overlap is None:
         min_overlap = Lx - 2
 
-        #if Ly - Lx >= 3:
-            #min_overlap = Lx - 1
-        #else:
-            #min_overlap = int(np.ceil(Lx/2))
-
     # Slide matrices to try different alignments
     if (Lx == Ly) and ((Lx % 2)==1):
         aln_starts = range(min_overlap - Lx, Ly - min_overlap + 1)
@@ -199,27 +188,24 @@ def matrix_similarity(X, Y, metric='cosine', min_overlap=None, pad=False):
         Y_i = Y[max(i, 0):min(Ly, Lx + i), : ]
         X_i = X[max(-i, 0):min(Lx, Ly - i), :]
         w = min(Ly, Lx + i) - max(i, 0)
-        row_wise_sims = row_wise_equal_matrix_similarity(X_i, Y_i, metric=metric)
-        # Extend alignment with zeros (optional)
-        if (pad) and (w < Ly):
-            row_wise_sims.extend([0]*(Ly-w))
-        sims.append(np.mean(row_wise_sims))
+        corr = matrix_correlation(X_i, Y_i)
+        W = Lx + Ly - w
+        ncorr = corr * w/W
+        ncorrs.append(ncorr)
 
     # Return the highest similarity value across all alignments.
-    result = max(sims)
+    result = max(ncorrs)
     return result
 
 
-def pairwise_similarities(mats, metric='cosine', pad=False):
-    """Function to calculate all pairwise similarities between a list of position matrices.
+def pairwise_ncorrs(mats):
+    """Function to calculate all pairwise normalized correlations between a list of position matrices.
     
     Args: 
         mats (list): list of position matrices.
-        metric (str): 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
-        pad (bool): if one matrix is shorter, count 0 similarity between empty positions
         
     Returns:
-        sims (np.array): All pairwise similarities between matrices in mats.
+        ncorrs (np.array): All pairwise normalized correlations between matrices in mats.
     
     """
     # Get all pairwise combinations
@@ -228,7 +214,7 @@ def pairwise_similarities(mats, metric='cosine', pad=False):
     # Calculate pairwise similarities between all matrices
     sims = np.zeros(shape=(len(mats), len(mats)))
     for i, j in combins:
-        sims[i, j] = matrix_similarity(mats[i], mats[j], metric=metric, pad=pad)
+        sims[i, j] = ncorr(mats[i], mats[j])
         sims[j, i] = sims[i, j]
     for i in range(len(mats)):
         sims[i, i] = 1
@@ -236,16 +222,13 @@ def pairwise_similarities(mats, metric='cosine', pad=False):
     return sims
 
 
-def choose_representative_mat(df, sims=None, metric='cosine', maximize='median', pad=False, 
-                              weight_col='probs', pm_type='ppm'):
+def choose_representative_mat(df, sims=None, maximize='median', weight_col='probs', pm_type='ppm'):
     """Function to choose a representative position matrix from a group.
     
     Args:
         df (pandas df): Dataframe containing position matrix values and IDs.
         sims (np.array): pairwise similarities between all PWMs in pwms
-        metric (str): 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
         maximize (str): 'mean' or 'median'. Metric  to choose representative matrix.
-        pad (bool): if one matrix is shorter, count 0 similarity between empty positions
         weight_col(str): column in pwms that contains matrix values.
         pm_type (str): 'ppm' or 'pwm'
         
@@ -256,7 +239,7 @@ def choose_representative_mat(df, sims=None, metric='cosine', maximize='median',
     mats = list(df[weight_col].values)
     ids = list(df.Matrix_id)
     if sims is None:
-        sims = pairwise_similarities(mats, metric=metric, pad=pad)
+        sims = pairwise_ncorrs(mats)
     if len(mats)==2:
         # Choose matrix with lowest entropy
         if pm_type == 'ppm':
@@ -277,17 +260,15 @@ def choose_representative_mat(df, sims=None, metric='cosine', maximize='median',
     return result
 
     
-def choose_cluster_representative_mats(df, sims=None, clusters=None, metric='cosine', 
-                               maximize='median', pad=False, weight_col='probs', pm_type='ppm'):
+def choose_cluster_representative_mats(df, sims=None, clusters=None, 
+                               maximize='median', weight_col='probs', pm_type='ppm'):
     """Function to choose a representative position matrix from each cluster.
         
     Args:
         df (pandas df): Dataframe containing position matrix values and IDs.
         sims (np.array): pairwise similarities between all PWMs in pwms
         clusters (list): cluster assignments for each PWM.
-        metric (str): 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
         maximize (str): 'mean' or 'median'. Metric  to choose representative matrix.
-        pad (bool): if one matrix is shorter, count 0 similarity between empty positions
         weight_col(str): column in pwms that contains matrix values.
         pm_type (str): 'ppm' or 'pwm'
         
@@ -306,15 +287,14 @@ def choose_cluster_representative_mats(df, sims=None, clusters=None, metric='cos
         if sims is not None:
             c_sims = sims[in_cluster, :][:, in_cluster]
         # Choose representative matrix within cluster
-        sel_mat = choose_representative_mat(mats, sims=c_sims, metric=metric, 
-                                            maximize=maximize, pad=pad, weight_col=weight_col,
-                                            pm_type=pm_type)
+        sel_mat = choose_representative_mat(mats, sims=c_sims, maximize=maximize, 
+                                            weight_col=weight_col, pm_type=pm_type)
         representatives.append(sel_mat)
     return representatives
 
 
 def cluster_pwms(df, n_clusters, sims=None, weight_col='probs', perplexity=4, plot=True, 
-                 metric='cosine', pad=False, output='reps', pm_type='ppm'):
+                 output='reps', pm_type='ppm'):
     """Function to cluster position matrices.
             
     Args:
@@ -324,8 +304,6 @@ def cluster_pwms(df, n_clusters, sims=None, weight_col='probs', perplexity=4, pl
         weight_col(str): column in pwms that contains matrix values.
         perplexity (int): parameter for t-SNE plot.
         plot (bool): whether to show t-SNE plot.
-        metric (str): 'cosine' (Cosine similarity) or 'corr' (Pearson correlation)
-        pad (bool): if one matrix is shorter, count 0 similarity between empty positions
         output (str): 'reps' (representative matrices for each cluster) or 'clusters' (cluster IDs).
         pm_type (str): 'ppm' or 'pwm'
         
@@ -335,15 +313,15 @@ def cluster_pwms(df, n_clusters, sims=None, weight_col='probs', perplexity=4, pl
         
     """
     if sims is None:
-        sims = pairwise_similarities(list(df[weight_col]), metric=metric, pad=pad)
+        sims = pairwise_ncorrs(list(df[weight_col]))
     cluster_ids = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', 
-                                          distance_threshold=None, linkage='complete').fit(1-sims).labels_
+                                          distance_threshold=None, linkage='complete').fit(2-sims).labels_
     if plot:
         cmap = {3:'purple', 2:'green', 1:'blue', 0:'red', -1:'orange'}
         plot_pwm_similarity(sims, df.Matrix_id, perplexity=perplexity, clusters=cluster_ids, cmap=cmap)
     if output=='reps':
-        reps = choose_cluster_representative_mats(df, sims=sims, clusters=cluster_ids, metric=metric, 
-                               maximize='median', pad=pad, weight_col=weight_col, pm_type=pm_type)
+        reps = choose_cluster_representative_mats(df, sims=sims, clusters=cluster_ids, 
+                               maximize='median', weight_col=weight_col, pm_type=pm_type)
         print("Representatives: " + str(reps))
         return reps
     elif output == 'clusters':
