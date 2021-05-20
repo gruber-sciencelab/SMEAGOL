@@ -145,35 +145,6 @@ def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None,
         plt.savefig(file_path, facecolor='white')
     else:
         plt.show()
-        
-
-def plot_pwm_similarity(sims, labels, perplexity=5, clusters=None, cmap=None):
-    """Function to visualize a group of PWMs using t-SNE.
-    
-    Args:
-        sims (np.array): Pairwise similarity matrix for PWMs.
-        labels (list): PWM IDs.
-        perplexity (float): parameter for t-SNE
-        clusters (list): cluster IDs to label points
-        cmap (dict): dictionary mapping cluster IDs to colors
-    
-    Returns:
-        t-SNE plot of PWMs
-        
-    """
-    coords = manifold.TSNE(n_components=2, metric="precomputed", perplexity=perplexity).fit(1-sims).embedding_
-    if cmap is not None:
-        plt.scatter(coords[:, 0], coords[:, 1], marker = 'o', c=pd.Series(clusters).map(cmap))
-    else:
-        plt.scatter(coords[:, 0], coords[:, 1], marker = 'o')
-    for label, x, y in zip(labels, coords[:, 0], coords[:, 1]):
-        plt.annotate(
-            label,
-            xy = (x, y), xytext = (-20, 20),
-            textcoords = 'offset points', ha = 'right', va = 'bottom',
-            bbox = dict(boxstyle = 'round,pad=0.5', alpha = 0.2),
-            arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
-    plt.show()
 
 
 def sliding_window_count_plot(df, title, cols=3, aspect=1.4, file_path=None):
