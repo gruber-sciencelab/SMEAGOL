@@ -20,8 +20,6 @@ from sklearn.cluster import AgglomerativeClustering
 
 # PPM/PWM analysis
 
-# Check
-
 def check_ppm(probs):
     """Function to check validity of a PPM.
     
