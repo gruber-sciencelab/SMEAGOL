@@ -21,6 +21,7 @@ def predict(encoding, model, threshold, score=False, method="fast"):
         scores (np.array): score for each potential binding site
         
     """
+    assert (threshold >= 0) & (threshold <= 1) 
     thresholds = threshold * model.max_scores
     predictions = model.predict(encoding.seqs)
     if method == "lowmem" and isinstance(predictions, list):
@@ -165,14 +166,18 @@ def count_sites(encoding, model, thresholded):
      
     """
     seq_idx = thresholded[0]
-    pwm_idx = thresholded[2]
-    result = pd.crosstab(index = model.Matrix_ids[pwm_idx], 
+    if len(seq_idx) == 0:
+        return pd.DataFrame({'Matrix_id': [], 'id': [], 'name': [], 'sense': [], 
+                            'num': []})
+    else:
+        pwm_idx = thresholded[2]
+        result = pd.crosstab(index = model.Matrix_ids[pwm_idx], 
                          columns = [encoding.ids[seq_idx], 
                                     encoding.names[seq_idx], 
                                     encoding.senses[seq_idx]])
-    result = result.melt(ignore_index=False).reset_index()
-    result.columns = ['Matrix_id', 'id', 'name', 'sense', 'num']
-    return result
+        result = result.melt(ignore_index=False).reset_index()
+        result.columns = ['Matrix_id', 'id', 'name', 'sense', 'num']
+        return result
 
 
 def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, method="fast"):

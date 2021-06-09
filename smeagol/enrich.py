@@ -26,16 +26,21 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
         enr_full (pd.DataFrame): dataframe containing FDR-corrected p-values for enrichment of each PWM.  
         
     """
-    # Compare counts on real and shuffled genomes
+    # Compare counts on real and shuffled genomes for each PWM
     if 'name' in shuf_stats.columns:
-        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense', 'name'])
+        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense', 'name'], how='outer')
     else:
-        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'])
-    enr = enr[(enr.num > 0) | (enr.avg > 0)].copy().reset_index(drop=True)
+        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'], how='outer')
+    # If 0 sites are present in real genome, include
+    enr['num'] = enr['num'].fillna(0)
+    # If 0 sites are present in shuffled genomes, set a minimum of 1 site
+    num_shuf = enr['len'][0]
+    enr.loc[enr.avg==0, 'avg'] = 1/num_shuf
     # Calculate normal z-score
     if (background == 'normal') or (background == 'both'):
+        enr.loc[enr.avg==0, 'sd'] = np.std([1] + [0]*(num_shuf - 1))
         enr['z'] = (enr.num - enr.avg)/enr.sd
-        enr['z'] = enr.z.replace([-np.inf], -100)
+        enr['z'] = enr.z.replace([-np.inf], -10)
     if (background == 'binomial') or (background == 'both'):
         assert seqlen is not None
     # Calculate p-value
@@ -66,7 +71,7 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
 
 
 def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True, method='fast'):
-    """Function to shuffel sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
+    """Function to shuffle sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
         
     Args:
         records (list): list of seqrecord objects
