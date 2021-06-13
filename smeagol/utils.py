@@ -81,6 +81,22 @@ def ppm_to_pwm(probs):
     return np.log2(probs/0.25)    
 
 
+def pfm_to_ppm(freqs, pseudocount=0.1):
+    """Function to convert PFM to PPM.
+    
+    Args:
+        freqs (np.array): array containing PFM values
+        pseudocount (float): pseudocount to add
+    
+    Returns:
+        Numpy array containing PPM.
+        
+    """
+    numerator = freqs + (pseudocount/4)
+    denominator = np.expand_dims(np.sum(freqs, axis=1) + pseudocount, 1)
+    return numerator / denominator 
+
+
 # Manipulation of position matrices
 
 def trim_ppm(probs, frac_threshold):
