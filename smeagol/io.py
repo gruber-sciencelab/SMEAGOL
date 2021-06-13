@@ -1,6 +1,10 @@
 import gzip
 from mimetypes import guess_type
 from functools import partial
+import numpy as np
+import pandas as pd
+import os
+from collections import defaultdict
 
 # Biopython imports
 from Bio import SeqIO
@@ -89,3 +93,67 @@ def shuffle_records(records, simN, simK, out_file=None):
     if out_file is not None:
         write_fasta(shuf_records, out_file)
     return shuf_records
+
+
+def read_pms_from_file(file, value_col='probs', lengths=False, transpose=False):
+    """Function to read position matrices from a fasta-like file in Attract format.
+    
+    Args:
+        pm_file (str): file containing PMs
+        value_col (str): name for column containing PM values
+        lengths (bool): lengths are provided in the file
+        transpose (bool): transpose the matrix
+    
+    Returns:
+        pandas dataframe containing PMs
+    
+    """
+    # Read file
+    pms = list(open(file, 'r'))
+    pms = [x.strip().split('\t') for x in pms]
+    
+    # Get matrix start and end positions
+    starts = np.where([x[0].startswith(">") for x in pms])[0]
+    assert starts[0] == 0
+    ends = np.append(starts[1:], len(pms))
+    
+    # Get matrix IDs and values
+    pm_ids = [l[0].strip('>') for l in pms if l[0].startswith(">")]
+    if lengths:
+        lens = np.array([l[1] for l in pms if l[0].startswith(">")]).astype('int')
+        assert np.all(lens == ends - starts - 1)
+    pms = [pms[start+1:end] for start, end in zip(starts, ends)]
+    if transpose:
+        pms = [np.transpose(np.array(x).astype('float')) for x in pms]
+    else:
+        pms = [np.array(x).astype('float') for x in pms]
+    
+    # Make dataframe
+    return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
+
+
+def read_pms_from_dir(dirname, value_col='probs', transpose=False):
+    """Function to read position matrices from a directory with separate files for each PM.
+    
+    Args:
+        pm_file (str): file containing PMs
+        value_col (str): name for column containing PM values
+        transpose (bool): transpose the matrix
+    
+    Returns:
+        pandas dataframe containing PMs
+    
+    """
+    files = os.listdir(dirname)
+    pm_ids = []
+    pms = []
+    # Read individual files
+    for file in files:
+        pm_ids.append(file.split("_")[0])
+        pm = np.loadtxt(os.path.join(dirname, file))
+        if transpose:
+            pm = np.transpose(pm)
+        pms.append(pm)
+    
+    # Make dataframe
+    return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
