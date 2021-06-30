@@ -23,14 +23,10 @@ pip install .
 
 ## Usage
 
-In your python script / notebook, use:
-```
-import sys
-sys.path.append('SMEAGOL') <--- supply the path to the cloned git repo here
-```
-You can then import modules or functions from Smeagol. For example:
+In your python script / notebook, you can import modules or functions from Smeagol. For example:
 ```
 import smeagol.visualize
+from smeagol.visualize import plot_background
 ```
 
 ## Modules
