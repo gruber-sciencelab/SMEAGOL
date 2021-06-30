@@ -17,6 +17,13 @@ from functools import partial
 # Stats imports
 from sklearn.cluster import AgglomerativeClustering
 
+# Biasaway imports
+from biasaway.utils import GC, dinuc_count, IUPAC_DINUC
+from ushuffle import shuffle, set_seed
+
+# Smeagol imports
+from .io import write_fasta
+
 
 # PPM/PWM analysis
 
@@ -324,3 +331,34 @@ def cluster_pwms(df, n_clusters, sims=None, weight_col='weight'):
     min_ncorrs = [np.min(sims[cluster_ids==i, :][:, cluster_ids==i]) for i in range(n_clusters)]
     result = {'clusters':cluster_ids, 'reps':reps, 'min_ncorr': min_ncorrs}
     return result
+
+
+def shuffle_records(records, simN, simK, out_file=None):
+    """Function to shuffle sequences.
+    
+    Args:
+        records (list): list of seqRecord objects
+        simN (int): Number of times to shuffle
+        simK (int): k-mer frequency to conserve
+        out_file (str): Path to output file (optional)
+    
+    Returns:
+        shuf_records (list): list of shuffled sequences
+        Writes shuf_records to file if out_file provided.
+
+    """
+    # Shuffle
+    shuf_records = []
+    for record in records:
+        shuf = 1
+        for n in range(0, simN):
+            new_seq = shuffle(str.encode(record.seq.__str__()), simK).decode()
+            new_seq = SeqRecord(Seq(new_seq),id="background_seq_{0:d}".format(shuf))
+            new_seq.name = record.id
+            shuf_records.append(new_seq)                
+            shuf += 1
+    print('Shuffled ' + str(len(records)) + ' input sequence(s) ' + str(simN) + ' times while conserving k-mer frequency for k = ' + str(simK))
+    # Write
+    if out_file is not None:
+        write_fasta(shuf_records, out_file)
+    return shuf_records

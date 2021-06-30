@@ -8,7 +8,7 @@ import scipy.stats as stats
 import statsmodels.stats.multitest as multitest
 
 # Smeagol imports
-from .io import write_fasta, shuffle_records
+from .utils import shuffle_records
 from .encode import MultiSeqEncoding
 from .scan import find_sites_multiseq
 
