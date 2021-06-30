@@ -4,10 +4,22 @@ Smeagol is a library to identify and visualize enrichment (or depletion) of moti
 
 ## Setup
 
-Install requirements (TBA)
+SMEAGOL is compatible with Python 3.7.
 
-Clone this git repo.
+### 1. Clone this git repository
+```
+git clone https://github.com/gruber-sciencelab/SMEAGOL
+```
 
+### 2. Install pip dependencies
+```
+cd SMEAGOL && pip install -r requirements.txt
+```
+
+### 3. Install SMEAGOL
+```
+pip install .
+```
 
 ## Usage
 
