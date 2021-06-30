@@ -30,7 +30,7 @@ sys.path.append('SMEAGOL') <--- supply the path to the cloned git repo here
 ```
 You can then import modules or functions from Smeagol. For example:
 ```
-import smeagol.visualization
+import smeagol.visualize
 ```
 
 ## Modules
