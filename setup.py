@@ -23,6 +23,6 @@ setup(name='SMEAGOL',
       version='0.0.1',
       install_requires=required_packages,
       packages=['smeagol'],
-      python_requires='>=3.7',
+      python_requires='>=3.7, !=3.9',
       platforms=['any'],
       )
