@@ -11,10 +11,6 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-# Biasaway imports
-from biasaway.utils import GC, dinuc_count, IUPAC_DINUC
-from ushuffle import shuffle, set_seed
-
 
 def read_fasta(file):
     """Function to read sequences from a fasta or fasta.gz file
@@ -62,37 +58,6 @@ def write_fasta(records, file, gz=True):
             for record in records:
                 SeqIO.write(record, output_handle, "fasta")
     print('Wrote ' + str(len(records)) + ' shuffled sequences to ' + file)
-    
-
-def shuffle_records(records, simN, simK, out_file=None):
-    """Function to shuffle sequences.
-    
-    Args:
-        records (list): list of seqRecord objects
-        simN (int): Number of times to shuffle
-        simK (int): k-mer frequency to conserve
-        out_file (str): Path to output file (optional)
-    
-    Returns:
-        shuf_records (list): list of shuffled sequences
-        Writes shuf_records to file if out_file provided.
-
-    """
-    # Shuffle
-    shuf_records = []
-    for record in records:
-        shuf = 1
-        for n in range(0, simN):
-            new_seq = shuffle(str.encode(record.seq.__str__()), simK).decode()
-            new_seq = SeqRecord(Seq(new_seq),id="background_seq_{0:d}".format(shuf))
-            new_seq.name = record.id
-            shuf_records.append(new_seq)                
-            shuf += 1
-    print('Shuffled ' + str(len(records)) + ' input sequence(s) ' + str(simN) + ' times while conserving k-mer frequency for k = ' + str(simK))
-    # Write
-    if out_file is not None:
-        write_fasta(shuf_records, out_file)
-    return shuf_records
 
 
 def read_pms_from_file(file, value_col='probs', lengths=False, transpose=False):
@@ -136,7 +101,7 @@ def read_pms_from_dir(dirname, value_col='probs', transpose=False):
     """Function to read position matrices from a directory with separate files for each PM.
     
     Args:
-        pm_file (str): file containing PMs
+        dirname (str): folder containing PMs in infividual files
         value_col (str): name for column containing PM values
         transpose (bool): transpose the matrix
     

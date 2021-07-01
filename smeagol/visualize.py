@@ -64,7 +64,6 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
         shuf_preds (pd.DataFrame): DF containing Matrix_id, sense, bin
         Matrix_id (str): ID of PWM for which to plot distribution
         sense (str): sense of strand for which to plot distribution. If not given, both strands are used.
-        rounding (int): number of digits to round bin thresholds
         file_path (str): path to save figure
     
     Returns:
@@ -72,10 +71,8 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
         
     """
     real_selected = real_preds[(real_preds.sense==sense) & (real_preds.Matrix_id==Matrix_id)].copy()
-    real_selected.bin = np.round(real_selected.bin, rounding)
     if shuf_preds is not None:
         shuf_selected = shuf_preds[(shuf_preds.sense==sense) & (shuf_preds.Matrix_id==Matrix_id)].copy()
-        shuf_selected.bin = np.round(shuf_selected.bin, rounding)
         shuf_selected['sequence'] = 'shuffled'
         real_selected['sequence'] = 'real'
         selected = pd.concat([real_selected, shuf_selected])
