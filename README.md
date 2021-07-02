@@ -9,6 +9,8 @@ It is recommended to install in a conda environment or virtualenv. SMEAGOL is co
 To install smeagol using conda, create a new environment and activate it
 ```
 conda create --name smeagol python=3.7
+
+conda activate smeagol
 ```
 
 ### 1. Clone this git repository
