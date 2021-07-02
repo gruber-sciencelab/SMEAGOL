@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from keras import Model
-from keras.layers import Conv1D, Input, Concatenate, Embedding, Reshape
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Conv1D, Input, Concatenate, Embedding, Reshape
 from .encode import one_hot_dict
 
 # Define convolutional model

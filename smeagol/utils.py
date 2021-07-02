@@ -185,9 +185,7 @@ def ncorr(X, Y, min_overlap=None):
     Ly = len(Y)
     Lx = len(X)
     if Ly < Lx:
-        X_orig = X
-        X = Y
-        Y = X_orig
+        X, Y = Y, X
     Ly = len(Y)
     Lx = len(X)
     

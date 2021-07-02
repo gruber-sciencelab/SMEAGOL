@@ -1,5 +1,3 @@
-import tensorflow as tf
-import keras
 import pandas as pd
 import numpy as np
 import itertools
