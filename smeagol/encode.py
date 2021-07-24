@@ -11,6 +11,7 @@ from Bio.SeqRecord import SeqRecord
 # Dictionaries
 
 one_hot_dict = {
+    'Z': [0, 0, 0, 0],
     'A': [1, 0, 0, 0],
     'C': [0, 1, 0, 0],
     'G': [0, 0, 1, 0],
@@ -25,8 +26,7 @@ one_hot_dict = {
     'B': [0, 1/3, 1/3, 1/3],
     'D': [1/3, 0, 1/3, 1/3],
     'H': [1/3, 1/3, 0, 1/3],
-    'V': [1/3, 1/3, 1/3, 0],
-    'Z': [0, 0, 0, 0]
+    'V': [1/3, 1/3, 1/3, 0]
 }
 
 sense_complement_dict = {
@@ -116,6 +116,7 @@ class MultiSeqEncoding:
             self.seqs = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
+        self.total_len = sum([seq.len for seq in self.seqs])
     def group_by_name(self, records):
         records_dict = {}
         for record in records:

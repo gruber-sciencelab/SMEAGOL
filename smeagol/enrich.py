@@ -28,9 +28,9 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
     """
     # Compare counts on real and shuffled genomes for each PWM
     if 'name' in shuf_stats.columns:
-        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense', 'name'], how='outer')
+        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'width', 'sense', 'name'], how='outer')
     else:
-        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'sense'], how='outer')
+        enr = real_counts.merge(shuf_stats, on=['Matrix_id', 'width', 'sense'], how='outer')
     # If 0 sites are present in real genome, include
     enr['num'] = enr['num'].fillna(0)
     # If 0 sites are present in shuffled genomes, set a minimum of 1 site
@@ -43,14 +43,15 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
         enr['z'] = enr.z.replace([-np.inf], -10)
     if (background == 'binomial') or (background == 'both'):
         assert seqlen is not None
+        enr['adj_len'] = seqlen - enr['width'] + 1
     # Calculate p-value
     if background == 'normal':
         enr['p'] = stats.norm.sf(abs(enr.z))*2
     elif background == 'binomial':
-        enr['p'] = enr.apply(lambda x:stats.binom_test(x['num'], seqlen, x['avg']/seqlen, alternative='two-sided'), axis=1)
+        enr['p'] = enr.apply(lambda x:stats.binom_test(x['num'], x['adj_len'], x['avg']/x['adj_len'], alternative='two-sided'), axis=1)
     elif background == 'both':
         enr['pnorm'] = stats.norm.sf(abs(enr.z))*2
-        enr['pbinom'] = enr.apply(lambda x:stats.binom_test(x['num'], seqlen, x['avg']/seqlen, alternative='two-sided'), axis=1)
+        enr['pbinom'] = enr.apply(lambda x:stats.binom_test(x['num'], x['adj_len'], x['avg']/x['adj_len'], alternative='two-sided'), axis=1)
     enr_full = pd.DataFrame()
     # FDR correction per molecule
     for sense in pd.unique(enr.sense):
@@ -67,10 +68,11 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', seqlen=
     elif background == 'both':
         enr_full.sort_values(['sense', 'fdr_binom'], inplace=True)
     enr_full.reset_index(inplace=True, drop=True)
+    enr_full.drop(columns='adj_len', inplace=True)
     return enr_full
 
 
-def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True, method='fast'):
+def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True):
     """Function to shuffle sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
         
     Args:
@@ -83,7 +85,6 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
         background (str): 'binomial' or 'normal'
         verbose (bool): output all information
         combine_seqs (bool): combine outputs for multiple sequences into single dataframe
-        method (str): 'fast' or 'lowmem'
         
     Returns:
         results (dict): dictionary containing results.  
@@ -98,7 +99,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     # Encode shuffled genomes
     encoded_shuffled = MultiSeqEncoding(shuf, sense=sense, rcomp=rcomp, group_by_name=True)
     # Count sites on shuffled genomes
-    shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=verbose, stats=True, combine_seqs=combine_seqs, sep_ids=True, method=method)
+    shuf_preds = find_sites_multiseq(encoded_shuffled, model, threshold, total_counts=verbose, stats=True, combine_seqs=combine_seqs, sep_ids=True)
     # Calculate binding site enrichment
     if background == 'normal':
         enr = enrich_over_shuffled(real_preds['total_counts'], shuf_preds['stats'], background=background)
@@ -116,7 +117,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     return results
 
 
-def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True, method='fast'):
+def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True):
     """Function to compare the number of binding sites at various thresholds.
             
     Args:
@@ -129,7 +130,6 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
         min_threshold (float): minimum threshold for a binding site (0 to 1)
         verbose (bool): output all information
         combine_seqs (bool): combine outputs for multiple sequences into single dataframe
-        method (str): 'fast' or 'lowmem'
         
     Returns:
         results (dict): dictionary containing results. 
@@ -138,8 +138,8 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
     shuf = shuffle_records(records, simN, simK)
     encoded_shuffled = MultiSeqEncoding(shuf, sense=sense, rcomp=rcomp, group_by_name=True)
     thresholds = np.arange(min_threshold, 1.0, 0.1)
-    real_binned = find_sites_multiseq(encoded, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, method=method)['binned_counts']
-    shuf_binned = find_sites_multiseq(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True, method=method)['binned_counts']
+    real_binned = find_sites_multiseq(encoded, model, thresholds, binned_counts=True, combine_seqs=combine_seqs)['binned_counts']
+    shuf_binned = find_sites_multiseq(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True)['binned_counts']
     results = {'real_binned':real_binned, 'shuf_binned': shuf_binned}
     if verbose:
         results['shuf_seqs'] = shuf

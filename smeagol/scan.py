@@ -3,7 +3,7 @@ import numpy as np
 import itertools
 
 
-def predict(encoding, model, threshold, score=False, method="fast"):
+def predict(encoding, model, threshold, score=False):
     """Prediction by scanning an encoded sequence with a convolutional model.
     
     Args:
@@ -11,7 +11,6 @@ def predict(encoding, model, threshold, score=False, method="fast"):
         model (model): Prameterized convolutional model
         threshold (float): fraction of maximum score to use as binding site detection threshold
         score (bool): Output binding site scores as well as positions
-        method (str): 'fast' (default) or 'lowmem' (slower but uses less memory)
         
     Returns:
         thresholded (np.array): positions where the input sequence(s) match the input 
@@ -19,74 +18,18 @@ def predict(encoding, model, threshold, score=False, method="fast"):
         scores (np.array): score for each potential binding site
         
     """
+    # Get threshold for each PWM
     assert (threshold >= 0) & (threshold <= 1) 
     thresholds = threshold * model.max_scores
+    # Inference using convolutional model
     predictions = model.predict(encoding.seqs)
-    if method == "lowmem" and isinstance(predictions, list):
-        thresholded, scores = threshold_lowmem(predictions, thresholds, score)
-    else:
-        thresholded, scores = threshold_fast(encoding, predictions, thresholds, score)
-    return thresholded, scores
-
-
-def threshold_fast(encoding, predictions, thresholds, score=False):
-    """Default function to threshold model predictions.
-    
-    Args:
-        encoding (SeqEncoding): SeqEncoding object.
-        predictions (np.array): model output.
-        thresholds (np.array): score cutoff for each PWM in model
-        score (np.array): output score for each potential binding site
-        
-    Returns:
-        thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-        scores (np.array): score for each potential binding site
-    """
-    scores = None
-    # Concatenate predictions from each set of PWMs
-    if isinstance(predictions, list):
-        predictions = [np.pad(x, ((0,0), (0, encoding.len - x.shape[1]), (0,0)), 
-            mode='constant', constant_values=-1) for x in predictions]
-        predictions = np.concatenate(predictions, axis=2)
     # Threshold predictions
     thresholded = np.where(predictions > thresholds)
     # Combine site locations with scores
     if score:
         scores = predictions[thresholded]
-    return thresholded, scores
-
-
-def threshold_lowmem(predictions, thresholds, score=False):
-    """Thresholding function for high-memory jobs (e.g. long genomes).
-    
-    Args:
-        predictions (np.array): model output.
-        thresholds (np.array): score cutoff for each PWM in model
-        score (np.array): output score for each potential binding site
-        
-    Returns:
-        thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-        scores (np.array): score for each potential binding site
-        
-    """
-    scores = None
-    # Split predictions from each PWM
-    predictions = [np.split(x, x.shape[2],2) for x in predictions]
-    predictions = list(itertools.chain.from_iterable(predictions))
-    # Threshold predictions
-    thresholded = [[], []]
-    for i,p in enumerate(predictions):
-        x = np.where(p >= thresholds[i])
-        thresholded[0].append(x[0])
-        thresholded[1].append(x[1])
-    if score:
-        scores = np.concatenate([predictions[i][:,:,0][thresholded[0][i], thresholded[1][i]] for i in range(len(predictions))])
-    # Add back PWM ID
-    thresholded.append([[i] * thresholded[0][i].shape[0] for i in range(len(predictions))])
-    # Concatenate results
-    thresholded = [np.concatenate(x).astype(int) for x in thresholded]
+    else:
+        scores = None
     return thresholded, scores
 
 
@@ -166,20 +109,20 @@ def count_sites(encoding, model, thresholded):
     """
     seq_idx = thresholded[0]
     if len(seq_idx) == 0:
-        return pd.DataFrame({'Matrix_id': [], 'id': [], 'name': [], 'sense': [], 
+        return pd.DataFrame({'Matrix_id': [], 'width': [], 'id': [], 'name': [], 'sense': [], 
                             'num': []})
     else:
         pwm_idx = thresholded[2]
-        result = pd.crosstab(index = model.Matrix_ids[pwm_idx], 
+        result = pd.crosstab(index = [model.Matrix_ids[pwm_idx], model.widths[pwm_idx]], 
                          columns = [encoding.ids[seq_idx], 
                                     encoding.names[seq_idx], 
                                     encoding.senses[seq_idx]])
         result = result.melt(ignore_index=False).reset_index()
-        result.columns = ['Matrix_id', 'id', 'name', 'sense', 'num']
+        result.columns = ['Matrix_id', 'width', 'id', 'name', 'sense', 'num']
         return result
 
 
-def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, method="fast"):
+def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
     """Function to predict binding sites on encoded sequence(s).
     
     Args:
@@ -191,7 +134,6 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
         total_counts (bool): output total count of binding sites per PWM
         stats (bool): output mean and standard deviation of the count of binding sites per PWM
         score (bool): output scores for binding sites
-        method (str): prediction function, "fast" or "highmem"
     
     Returns: 
         output (dict): dictionary containing specified outputs.
@@ -203,9 +145,9 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
         score = True
     if binned_counts:
         assert type(threshold) == np.ndarray
-        thresholded, scores = predict(encoding, model, min(threshold), score, method)
+        thresholded, scores = predict(encoding, model, min(threshold), score)
     else:
-        thresholded, scores = predict(encoding, model, threshold, score, method)
+        thresholded, scores = predict(encoding, model, threshold, score)
     output = {}
     if sites:
         output['sites'] = locate_sites(encoding, model, thresholded, scores)
@@ -223,7 +165,7 @@ def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False,
     return output
 
 
-def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, combine_seqs=False, sep_ids=False, method="fast"):
+def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, combine_seqs=False, sep_ids=False):
     """Function to predict binding sites on class MultiSeqEncoding.
     
     Args:
@@ -237,7 +179,6 @@ def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=F
         score (bool): output scores for binding sites
         combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
-        method (str): prediction function, "fast" or "highmem"
     
     Returns: 
         output (dict): dictionary containing specified outputs.
@@ -245,9 +186,9 @@ def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=F
     """
     # Find binding sites per sequence or group of sequences
     if combine_seqs and stats:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score=score, method=method) for seq in encoding.seqs]
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score=score) for seq in encoding.seqs]
     else:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score, method) for seq in encoding.seqs]
+        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score) for seq in encoding.seqs]
     # Concatenate binding sites
     output = {}
     for key in output_per_seq[0].keys():
@@ -256,18 +197,18 @@ def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=F
     if combine_seqs:
         if sep_ids:
             if 'total_counts' in output.keys():
-                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'sense', 'id']).num.sum().reset_index()
+                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'width', 'sense', 'id']).num.sum().reset_index()
             if 'binned_counts' in output.keys():
-                output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'sense', 'bin', 'id']).num.sum().reset_index()
+                output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'width', 'sense', 'bin', 'id']).num.sum().reset_index()
         else:
             if 'total_counts' in output.keys():
-                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'sense']).num.sum().reset_index()
+                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'width', 'sense']).num.sum().reset_index()
             if 'binned_counts' in output.keys():
-                output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'sense', 'bin']).num.sum().reset_index()
+                output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'width', 'sense', 'bin']).num.sum().reset_index()
         # Calculate stats
         if stats:
-            stats = output['total_counts'].groupby(['Matrix_id', 'sense']).agg([len, np.mean, np.std]).reset_index()
-            stats.columns = ['Matrix_id', 'sense', 'len', 'avg', 'sd'] 
+            stats = output['total_counts'].groupby(['Matrix_id', 'width', 'sense']).agg([len, np.mean, np.std]).reset_index()
+            stats.columns = ['Matrix_id', 'width', 'sense', 'len', 'avg', 'sd'] 
             output['stats'] = stats 
             if not total_counts:
                 del output['total_counts']
