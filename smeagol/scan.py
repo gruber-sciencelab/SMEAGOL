@@ -84,13 +84,13 @@ def bin_sites_by_score(encoding, model, thresholded, scores, bins):
     pwm_idx = thresholded[2]
     frac_scores = scores/model.max_scores[pwm_idx]
     binned_scores = pd.cut(frac_scores, np.concatenate([bins, [1]]))
-    result = pd.crosstab(index = model.Matrix_ids[pwm_idx], 
+    result = pd.crosstab(index = [model.Matrix_ids[pwm_idx], model.widths[pwm_idx]], 
                          columns = [encoding.ids[seq_idx], 
                                     encoding.names[seq_idx], 
                                     encoding.senses[seq_idx], 
                                     binned_scores])
     result = result.melt(ignore_index=False).reset_index()
-    result.columns = ['Matrix_id', 'id', 'name', 'sense', 'bin', 'num']
+    result.columns = ['Matrix_id', 'width', 'id', 'name', 'sense', 'bin', 'num']
     return result
 
                        
