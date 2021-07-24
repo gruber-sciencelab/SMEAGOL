@@ -192,20 +192,19 @@ def get_tiling_windows_over_genome(genome, width, shift=None):
     return windows
 
 
-def count_in_window(window, sites, genome, matrix_id):
+def count_in_window(window, sites, matrix_id):
     """Function to calculate count of PWMs in subsequence.
     
     Args:
         window (pd.DataFrame): dataframe with columns id, start, end
         sites (pd.DataFrame): dataframe containing locations of binding sites
-        genome (list): list of SeqRecord objects
         matrix_id (str): selected PWM
     
     Returns:
         count (int): Number of binding sites for given PWM in selected window.
 
     """
-    count = len(sites[(sites.Matrix_id==matrix_id) & (sites.id==window.id) & (sites.start>=window.start) & (sites.start<window.end)])
+    count = len(sites[(sites.Matrix_id==matrix_id) & (sites.id==window.id) & (sites.start >= window.start) & (sites.start < window.end)])
     return count
 
 
@@ -223,16 +222,22 @@ def enrich_in_window(window, sites, genome, matrix_id):
     
     """
     result = window.copy()
+    # Get sites for required matrix
+    matrix_sites = sites[sites.Matrix_id == matrix_id]
+    # Get matrix width
+    width = matrix_sites.width[0]
+    # Correct window length and genome length
+    effective_window_len = window.end - window.start - width + 1
+    effective_genome_len = sum([len(x) for x in genome]) - width + 1
     # Calculate number of successes and failures in selected region
-    result['len'] = window.end - window.start
-    result['count'] = count_in_window(window, sites, genome, matrix_id)
+    result['len'] = effective_window_len
+    result['count'] = count_in_window(window, sites, matrix_id)
     count_neg = result['len'] - result['count']
     # Calculate number of successes and failures in whole genome
-    tot_len = sum([len(x) for x in genome])
-    result['tot_count'] = len(sites[sites.Matrix_id == matrix_id])
-    tot_neg = tot_len - result.tot_count
+    result['tot_count'] = len(matrix_sites)
+    tot_neg = effective_genome_len - result.tot_count
     # Expected value
-    result['expected'] = (result.tot_count * result.len)/tot_len
+    result['expected'] = (result.tot_count * result.len) / effective_genome_len
     # Fisher's exact test
     odds, p = stats.fisher_exact([[result['count'], count_neg], [result.tot_count, tot_neg]], alternative='two-sided')
     result['odds'] = odds
