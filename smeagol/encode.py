@@ -83,19 +83,19 @@ class SeqEncoding:
         if type(seqs) == 'str':
             seqs = read_fasta(seqs)
         self.check_equal_lens(seqs)
-        self.len = len(records[0].seq)
-        self.ids = [record.id for record in records]
-        self.names = [record.name for record in records]
+        self.len = len(seqs[0].seq)
+        self.ids = np.array([record.id for record in seqs])
+        self.names = np.array([record.name for record in seqs])
         self.seqs = np.empty(shape=(0, self.len))
         self.senses = []
         if rcomp != 'only':
-            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=False) for record in records]])
-            self.senses.extend([sense]*len(seqs))
+            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=False) for record in seqs]])
+            self.senses = np.concatenate([self.senses, [sense]*len(seqs)])
         if rcomp is not None:
-            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in records]])
-            self.ids.extend(self.ids)
-            self.names.extend(self.names)
-            self.senses.extend([sense_complement_dict[sense]*len(seqs)])
+            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in seqs]])
+            self.ids = np.tile(self.ids, 2)
+            self.names = np.tile(self.names, 2)
+            self.senses = np.concatenate([self.senses, [sense_complement_dict[sense]]*len(seqs)])
             self.reverse_complemented = True
     def check_equal_lens(self, records):
         if len(records) > 1:
@@ -121,9 +121,9 @@ class MultiSeqEncoding:
             seqs = read_fasta(seqs)
         if (group_by_name) and (len(seqs)) > 1:
             seqs = self.group_by_name(seqs)
-            self.seqs = [SeqEncoding(record, sense=sense, rcomp=rcomp) for record in records]
+            self.seqs = [SeqEncoding(record, sense=sense, rcomp=rcomp) for record in seqs]
         else:
-            self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
+            self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in seqs]
         self.num_seqs = len(self.seqs)
         self.total_len = sum([seq.len for seq in self.seqs])
     def group_by_name(self, records):
