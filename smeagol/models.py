@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Conv1D, Input, Concatenate, Embedding, Reshape
+from tensorflow.keras.layers import Conv1D, Input, Concatenate, Embedding, Reshape, ZeroPadding1D
 from .encode import one_hot_dict
 
 # Define convolutional model
@@ -25,16 +25,20 @@ class PWMModel:
     def define_model(self):
         """Define the conv model
         """
-        # One-hot encode the sequence
-        inputs = Input(shape=(None,1))
-        l1 = Embedding(input_dim=16, output_dim=4, input_length=None)
-        one_hot = l1(inputs)
-        l2 = Reshape((-1, 4))
-        reshaped = l2(one_hot)
-        # Scan with convolutional filters                        
-        l3 = Conv1D(self.channels, [self.max_width], padding="valid", use_bias=False)
-        outputs = l3(reshaped)
-        self.model = Model(inputs=inputs, outputs=outputs, name="pwm_model")
+        input_seq = Input(shape=(None, 1))
+        # the padding layer will pad the sequence with zeros
+        padding_layer = ZeroPadding1D(padding=(0, self.max_width - 1))
+        # the one_hot_layer will one-hot-encode the sequence
+        one_hot_layer = Embedding(input_dim=16, output_dim=4, input_length=None)
+        reshape_layer_1 = Reshape((-1, 4))
+        # the conv_layer will scan the sequence with PWMs
+        conv_layer_1 = Conv1D(self.channels, [self.max_width], padding="valid", use_bias=False)
+        # Connect the layers
+        padded = padding_layer(input_seq)
+        one_hot = one_hot_layer(padded)
+        reshaped = reshape_layer_1(one_hot)
+        output = conv_layer_1(reshaped)
+        self.model = Model(inputs=input_seq, outputs=output, name="pwm_model")
     def pad_weights(self, weights):
         """Function to pad weights with zeros
         """
@@ -48,14 +52,8 @@ class PWMModel:
         """Function to fix the weights of the conv model
         """
         padded_weights = self.pad_weights(weights)
-        self.model.layers[1].set_weights([np.array(list(one_hot_dict.values()))])
-        self.model.layers[3].set_weights([padded_weights])
-    def pad_sequence(self, encoded_seq):
-        """Function to pad encoded input sequence
-        """
-        padded_seq = np.pad(encoded_seq, ((0,0), (0, self.max_width - 1), (0,0)), 'constant', constant_values=0)
-        return padded_seq
+        self.model.layers[2].set_weights([np.array(list(one_hot_dict.values()))])
+        self.model.layers[4].set_weights([padded_weights])
     def predict(self, encoded_seq):
-        padded_seq = self.pad_sequence(encoded_seq)
-        padded_seq = tf.convert_to_tensor(padded_seq, dtype=tf.float32)
-        return self.model.predict(padded_seq)
+        input_seq = tf.convert_to_tensor(encoded_seq, dtype=tf.float32)
+        return self.model.predict(input_seq)

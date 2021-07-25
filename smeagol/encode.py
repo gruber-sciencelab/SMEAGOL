@@ -7,6 +7,8 @@ import itertools
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+# SMEAGOL imports
+from .io import read_fasta
 
 # Dictionaries
 
@@ -31,7 +33,7 @@ one_hot_dict = {
 
 sense_complement_dict = {
     '+':'-', 
-    '-':'+'
+    '-':'+',
 }
 
 bases = list(one_hot_dict.keys())
@@ -59,10 +61,7 @@ def integer_encode(record, rcomp=False):
     else:
         seq = record.seq
     # Encode
-    result = np.array([integer_encoding_dict.get(base) for base in seq])
-    # Shape
-    result = np.expand_dims(result, 0)
-    result = np.expand_dims(result, 2)
+    result = [integer_encoding_dict.get(base) for base in seq]
     return result  
 
 
@@ -70,33 +69,38 @@ class SeqEncoding:
     """Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
     
     Args:
-        records (list): list of seqrecord objects
-        rcomp (bool): encode sequence reverse complement as well as original sequence
+        seqs (list / str): list of seqrecord objects or FASTA file
+        rcomp (str): 'only' to encode the sequence reverse complement, or 'both' 
+                     to encode the reverse complement as well as original sequence
         sense (str): sense of sequence(s), '+' or '-'.
       
     Raises:
         ValueError: if sequences have unequal length.
     
     """
-    def __init__(self, records, rcomp=False, sense=None):
+    def __init__(self, seqs, rcomp=None, sense=None):
         self.reverse_complemented = False
-        self.check_equal_lens(records)
+        if type(seqs) == 'str':
+            seqs = read_fasta(seqs)
+        self.check_equal_lens(seqs)
         self.len = len(records[0].seq)
-        self.seqs = np.concatenate([integer_encode(record, rcomp=False) for record in records], axis=0)
-        self.ids = np.array([record.id for record in records])
-        self.names = np.array([record.name for record in records])
-        self.senses = np.array([sense]*len(records))
-        if rcomp:
-            rcomp_encoded = np.concatenate([integer_encode(record, rcomp=True) for record in records], axis=0)
-            self.seqs = np.concatenate([self.seqs, rcomp_encoded], axis=0)
-            self.ids = np.tile(self.ids, 2)
-            self.names = np.tile(self.names, 2)
-            self.senses = np.append(self.senses, [sense_complement_dict[sense] for sense in self.senses])
+        self.ids = [record.id for record in records]
+        self.names = [record.name for record in records]
+        self.seqs = np.empty(shape=(0, self.len))
+        self.senses = []
+        if rcomp != 'only':
+            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=False) for record in records]])
+            self.senses.extend([sense]*len(seqs))
+        if rcomp is not None:
+            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in records]])
+            self.ids.extend(self.ids)
+            self.names.extend(self.names)
+            self.senses.extend([sense_complement_dict[sense]*len(seqs)])
             self.reverse_complemented = True
     def check_equal_lens(self, records):
         if len(records) > 1:
-            lens = [len(record.seq) for record in records]
-            if len(np.unique(lens)) != 1:
+            lens = np.unique([len(record.seq) for record in records])
+            if len(lens) != 1:
                 raise ValueError("Cannot encode - sequences have unequal length!")
 
     
@@ -104,18 +108,23 @@ class MultiSeqEncoding:
     """Encodes multiple sets of sequences, each of which may have different length.
     
     Args:
-        records (list): list of seqrecord objects
-        rcomp (bool): encode sequence reverse complement as well as original sequence
-        sense (str): sense of sequence(s), '+' or '-'.
+        seqs (list / str): list of seqrecord objects or FASTA file
+        rcomp (str): 'only' to encode the sequence reverse complements, or 'both' 
+                     to encode the reverse complements as well as original sequences
+        sense (str): sense of sequences, '+' or '-'.
         group_by_name (bool): group sequences by their name
+        
     
     """
-    def __init__(self, records, rcomp=False, sense=None, group_by_name=False):
-        if (group_by_name) and (len(records)) > 1:
-            records = self.group_by_name(records)
-            self.seqs = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
+    def __init__(self, seqs, rcomp=None, sense=None, group_by_name=False):
+        if type(seqs) == 'str':
+            seqs = read_fasta(seqs)
+        if (group_by_name) and (len(seqs)) > 1:
+            seqs = self.group_by_name(seqs)
+            self.seqs = [SeqEncoding(record, sense=sense, rcomp=rcomp) for record in records]
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
+        self.num_seqs = len(self.seqs)
         self.total_len = sum([seq.len for seq in self.seqs])
     def group_by_name(self, records):
         records_dict = {}
