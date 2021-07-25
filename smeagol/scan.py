@@ -214,3 +214,85 @@ def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=F
                 del output['total_counts']
     
     return output
+
+
+# Analysis in windows
+
+def get_tiling_windows_over_record(record, width, shift):
+    """Function to get tiling windows over a sequence.
+    
+    Args:
+        record (SeqRecord): SeqRecord object
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        windows (pd.DataFrame): windows covering input sequence
+        
+    """
+    # Get start positions
+    starts = list(range(0, len(record), shift))
+    # Get end positions
+    ends = [np.min([x + width, len(record)]) for x in starts]
+    # Add sequence ID
+    idxs = np.tile(record.id, len(starts))
+    # Combine
+    windows = pd.DataFrame({'id':idxs, 'start':starts, 'end':ends})
+    return windows
+
+
+def get_tiling_windows_over_genome(genome, width, shift=None):
+    """Function to get tiling windows over a genome.
+        
+    Args:
+        genome (list): list of SeqRecord objects
+        width (int): width of tiling windows
+        shift (int): shift between successive windows. By default the same as width.
+    
+    Returns:
+        windows (pd.DataFrame): windows covering all sequences in genome
+        
+    """
+    if shift is None:
+        shift = width
+    if len(genome) == 1:
+        windows = get_tiling_windows_over_record(genome[0], width, shift)
+    else:
+        windows = pd.concat([get_tiling_windows_over_record(record, width, shift) for record in genome])
+    return windows
+
+
+def count_in_window(window, sites, matrix_id):
+    """Function to calculate count of PWMs in subsequence.
+    
+    Args:
+        window (pd.DataFrame): dataframe with columns id, start, end
+        sites (pd.DataFrame): dataframe containing locations of binding sites
+        matrix_id (str): selected PWM
+    
+    Returns:
+        count (int): Number of binding sites for given PWM in selected window.
+
+    """
+    count = len(sites[(sites.Matrix_id==matrix_id) & (sites.id==window.id) & (sites.start >= window.start) & (sites.start < window.end)])
+    return count
+
+
+def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
+    """Function to count binding sites in sliding windows across a genome.
+     
+    Args:
+        sites (pd.DataFrame): dataframe containing locations of binding sites
+        genome (list): list of SeqRecord objects
+        matrix_id (str): selected PWM
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        results (pd.DataFrame): dataframe containing number of binding sites per window
+        
+    """
+    windows = get_tiling_windows_over_genome(genome, width, shift)
+    windows['count'] = windows.apply(count_in_window, axis=1, args=(sites, matrix_id))
+    windows.reset_index(inplace=True, drop=True)
+    return windows
