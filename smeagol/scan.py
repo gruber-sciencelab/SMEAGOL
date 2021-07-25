@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import itertools
 
+from .encode import MultiSeqEncoding
+
 
 def predict(encoding, model, threshold, score=False):
     """Prediction by scanning an encoded sequence with a convolutional model.
@@ -122,61 +124,63 @@ def count_sites(encoding, model, thresholded):
         return result
 
 
-def find_sites_seq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False):
+def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False):
     """Function to predict binding sites on encoded sequence(s).
     
     Args:
         encoding (SeqEncoding): object of class SeqEncoding
         model (model): class PWMModel
         threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
-        sites (bool): output binding site locations
-        binned_counts (bool): output binned counts of binding sites per PWM
-        total_counts (bool): output total count of binding sites per PWM
-        stats (bool): output mean and standard deviation of the count of binding sites per PWM
-        score (bool): output scores for binding sites
+        outputs (list): List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts' 
+                        and 'stats'. For example: ['sites', 'counts'].
+                        'sites' outputs binding site locations
+                        'counts' outputs the total count of binding sites per PWM
+                        'binned_counts' outputs the counts of binding sites per PWM binned by score
+                        'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
+                         across multiple sequences.
+        score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
     
     Returns: 
         output (dict): dictionary containing specified outputs.
         
     """
-    if binned_counts:
+    output = {}
+    if 'binned_counts' in outputs:
         score = True
-    if sites:
-        score = True
-    if binned_counts:
         assert type(threshold) == np.ndarray
         thresholded, scores = predict(encoding, model, min(threshold), score)
+        output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     else:
         thresholded, scores = predict(encoding, model, threshold, score)
-    output = {}
-    if sites:
+    if 'sites' in outputs:
         output['sites'] = locate_sites(encoding, model, thresholded, scores)
-    if binned_counts:
-        output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
-    if (total_counts or stats):
-        total = count_sites(encoding, model, thresholded)
-    if total_counts:
-        output['total_counts'] = total
-    if stats:
-        stats = total.groupby(['Matrix_id', 'sense', 'name']).agg([len, np.mean, np.std]).reset_index()
-        stats.columns = ['Matrix_id', 'sense', 'name', 'len', 'avg', 'sd'] 
+    if ('counts'  in outputs) or ('stats' in outputs):
+        counts = count_sites(encoding, model, thresholded)
+    if 'counts' in outputs:
+        output['counts'] = counts
+    if 'stats' in outputs:
+        stats = counts.groupby(['Matrix_id', 'width', 'sense', 'name']).agg([len, np.mean, np.std]).reset_index()
+        stats.columns = ['Matrix_id', 'width', 'sense', 'name', 'len', 'avg', 'sd'] 
         output['stats'] = stats
 
     return output
 
 
-def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=False, total_counts=False, stats=False, score=False, combine_seqs=False, sep_ids=False):
+def find_sites_multiseq(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False):
     """Function to predict binding sites on class MultiSeqEncoding.
     
     Args:
         encoding (MultiSeqEncoding): object of class MultiSeqEncoding
         model (model): class PWMModel
         threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
-        sites (bool): output binding site locations
-        binned_counts (bool): output binned counts of binding sites per PWM
-        total_counts (bool): output total count of binding sites per PWM
-        stats (bool): output mean and standard deviation of the count of binding sites per PWM
-        score (bool): output scores for binding sites
+        outputs (list): List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts' 
+                        and 'stats'. For example: ['sites', 'counts'].
+                        'sites' outputs binding site locations
+                        'counts' outputs the total count of binding sites per PWM
+                        'binned_counts' outputs the counts of binding sites per PWM binned by score
+                        'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
+                        across multiple sequences.
+        score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
         combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
     
@@ -185,10 +189,11 @@ def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=F
         
     """
     # Find binding sites per sequence or group of sequences
-    if combine_seqs and stats:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts=True, stats=False, score=score) for seq in encoding.seqs]
-    else:
-        output_per_seq = [find_sites_seq(seq, model, threshold, sites, binned_counts, total_counts, stats, score) for seq in encoding.seqs]
+    if combine_seqs and ('stats' in outputs):
+        if 'counts' not in outputs:
+            outputs.extend('counts')
+        outputs.remove('stats')
+    output_per_seq = [find_sites_seq(seq, model, threshold, outputs, score=score) for seq in encoding.seqs]
     # Concatenate binding sites
     output = {}
     for key in output_per_seq[0].keys():
@@ -196,25 +201,58 @@ def find_sites_multiseq(encoding, model, threshold, sites=False, binned_counts=F
     # Combine binding sites
     if combine_seqs:
         if sep_ids:
-            if 'total_counts' in output.keys():
-                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'width', 'sense', 'id']).num.sum().reset_index()
+            if 'counts' in output.keys():
+                output['counts'] = output['counts'].groupby(['Matrix_id', 'width', 'sense', 'id']).num.sum().reset_index()
             if 'binned_counts' in output.keys():
                 output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'width', 'sense', 'bin', 'id']).num.sum().reset_index()
         else:
-            if 'total_counts' in output.keys():
-                output['total_counts'] = output['total_counts'].groupby(['Matrix_id', 'width', 'sense']).num.sum().reset_index()
+            if 'counts' in output.keys():
+                output['counts'] = output['counts'].groupby(['Matrix_id', 'width', 'sense']).num.sum().reset_index()
             if 'binned_counts' in output.keys():
                 output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'width', 'sense', 'bin']).num.sum().reset_index()
         # Calculate stats
         if stats:
-            stats = output['total_counts'].groupby(['Matrix_id', 'width', 'sense']).agg([len, np.mean, np.std]).reset_index()
+            stats = output['counts'].groupby(['Matrix_id', 'width', 'sense']).agg([len, np.mean, np.std]).reset_index()
             stats.columns = ['Matrix_id', 'width', 'sense', 'len', 'avg', 'sd'] 
             output['stats'] = stats 
-            if not total_counts:
-                del output['total_counts']
+            if 'counts' not in outputs:
+                del output['counts']
     
     return output
 
+
+def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False):
+    """Encode given sequences and predict binding sites on them.
+    
+    Args:
+        seqs (list / str): list of seqrecord objects or fasta file
+        
+        model (model): class PWMModel
+        threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
+        sense (str): sense of sequence(s), '+' or '-'.
+        rcomp (str): 'only' to encode the sequence reverse complement, or 'both' 
+                     to encode the reverse complement as well as original sequence
+        outputs (list): List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts' 
+                        and 'stats'. For example: ['sites', 'counts'].
+                        'sites' outputs binding site locations
+                        'counts' outputs the total count of binding sites per PWM
+                        'binned_counts' outputs the counts of binding sites per PWM binned by score
+                        'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
+                        across multiple sequences.
+        score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
+        combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
+        sep_ids (bool): separate outputs by sequence ID.
+    
+    Returns: 
+        output (dict): dictionary containing specified outputs.
+        
+    """
+    # Encode the sequences
+    encoded = MultiSeqEncoding(seqs, rcomp=rcomp, sense=sense)
+    # Find sites
+    preds = find_sites_multiseq(encoded, model, threshold=threshold, outputs=outputs, combine_seqs=combine_seqs)
+    return preds
+    
 
 # Analysis in windows
 
