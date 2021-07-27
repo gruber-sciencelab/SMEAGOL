@@ -1,10 +1,10 @@
+# General imports
 import gzip
 from mimetypes import guess_type
 from functools import partial
 import numpy as np
 import pandas as pd
 import os
-from collections import defaultdict
 
 # Biopython imports
 from Bio import SeqIO
@@ -24,13 +24,15 @@ def read_fasta(file):
     """
     records = []
     
-    # check whether file is compressed
+    # check whether the file is compressed
     encoding = guess_type(file)[1]
+    
+    # Function to open the file
     _open = partial(gzip.open, mode='rt') if encoding == 'gzip' else open
     
-    # Read sequences
-    with _open(file) as f:
-        for record in SeqIO.parse(f, 'fasta'):
+    # Open the file and read sequences
+    with _open(file) as input_handle:
+        for record in SeqIO.parse(input_handle, 'fasta'):
             records.append(record)
         print('Read ' + str(len(records)) + ' records from ' + file)
     
@@ -43,31 +45,49 @@ def write_fasta(records, file, gz=True):
     Params:
         records (list): list of seqRecord objects to write.
         file (str): path to file
-        gz (bool): whether output file is compressed.
+        gz (bool): whether output file should be compressed.
     
     Returns:
         Writes records to the file
     """
-    # Open file
-    if gz:
-        with gzip.open(file, "wt") as output_handle:
-            for record in records:
-                SeqIO.write(record, output_handle, "fasta")
-    else:
-        with open(file, "w") as output_handle:
-            for record in records:
-                SeqIO.write(record, output_handle, "fasta")
-    print('Wrote ' + str(len(records)) + ' shuffled sequences to ' + file)
-
-
-def read_pms_from_file(file, value_col='probs', lengths=False, transpose=False):
-    """Function to read position matrices from a fasta-like file in Attract format.
+    # Function to open the file
+    _open = partial(gzip.open, mode='wt') if gz else partial(open, mode='wt')
     
+    # Open the file and write sequences
+    with _open(file) as output_handle:
+        for record in records:
+            SeqIO.write(record, output_handle, "fasta")
+    print('Wrote ' + str(len(records)) + ' sequences to ' + file)
+
+
+def read_pms_from_file(file, value_col='probs', check_lens=False, transpose=False, delimiter='\t'):
+    """Function to read position matrices from a FASTA-like file in Attract format.
+    
+    The input file is expected to follow the format:
+    
+    >Matrix_1_ID
+    matrix values
+    >Matrix_2_ID
+    matrix values
+    
+    Matrices are by default expected to be in the position x base format, i.e. one row per position and 
+    one column per base (A, C, G, T). If the matrices are instead in the base x position format, set
+    `transpose=True`.
+    
+    Optionally, the ID rows may also contain a second tab-separated field indicating the length of the
+    matrix, for example:
+    
+    >Matrix_1_ID<tab>7
+    
+    The `pwm.txt` file downloaded from the Attract database follows this format. In this case, you can
+    set `check_lens=True` to confirm that the loaded PWMs match the expected lengths.
+        
     Args:
         pm_file (str): file containing PMs
-        value_col (str): name for column containing PM values
-        lengths (bool): lengths are provided in the file
-        transpose (bool): transpose the matrix
+        value_col (str): name for dataframe column to contain PM values
+        check_lens (bool): check that PWM lengths match the lengths provided in the file
+        transpose (bool): transpose the matrices
+        delimiter (str): The string used to separate values in the file
     
     Returns:
         pandas dataframe containing PMs
@@ -75,23 +95,32 @@ def read_pms_from_file(file, value_col='probs', lengths=False, transpose=False):
     """
     # Read file
     pms = list(open(file, 'r'))
+    
+    # Split tab-separated fields
     pms = [x.strip().split('\t') for x in pms]
     
     # Get matrix start and end positions
     starts = np.where([x[0].startswith(">") for x in pms])[0]
-    assert starts[0] == 0
+    assert starts[0] == 0 # Check that the first line of the file starts with >
     ends = np.append(starts[1:], len(pms))
     
     # Get matrix IDs and values
     pm_ids = [l[0].strip('>') for l in pms if l[0].startswith(">")]
+    
+    # Check that matrix lengths match values supplied in the file
     if lengths:
         lens = np.array([l[1] for l in pms if l[0].startswith(">")]).astype('int')
         assert np.all(lens == ends - starts - 1)
+    
+    # Separate the PMs
     pms = [pms[start+1:end] for start, end in zip(starts, ends)]
+    
+    # Convert to numpy arrays
+    pms = [np.array(x).astype('float32') for x in pms]
+    
+    # Transpose each PM
     if transpose:
-        pms = [np.transpose(np.array(x).astype('float')) for x in pms]
-    else:
-        pms = [np.array(x).astype('float') for x in pms]
+        pms = [np.transpose(x) for x in pms]
     
     # Make dataframe
     return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
@@ -100,25 +129,40 @@ def read_pms_from_file(file, value_col='probs', lengths=False, transpose=False):
 def read_pms_from_dir(dirname, value_col='probs', transpose=False):
     """Function to read position matrices from a directory with separate files for each PM.
     
+    The input directory is expected to contain individual files each of which represents a
+    separate matrix. 
+    
+    The file name should be the name of the PWM followed by an extension. If `_` is included in
+    the name, the characters after the `_` will be dropped.
+    
+    Matrices are by default expected to be in the position x base format, i.e. one row per position and 
+    one column per base (A, C, G, T). If the matrices are instead in the base x position format, set
+    `transpose=True`. 
+    
     Args:
-        dirname (str): folder containing PMs in infividual files
-        value_col (str): name for column containing PM values
+        dirname (str): folder containing PMs in individual files
+        value_col (str): name for dataframe column to contain PM values
         transpose (bool): transpose the matrix
     
     Returns:
         pandas dataframe containing PMs
     
     """
-    files = os.listdir(dirname)
     pm_ids = []
     pms = []
+    
+    # List files
+    files = os.listdir(dirname)
+    
     # Read individual files
     for file in files:
-        pm_ids.append(file.split("_")[0])
+        pm_ids.append(os.path.splitext(file)[0].split("_")[0])
         pm = np.loadtxt(os.path.join(dirname, file))
-        if transpose:
-            pm = np.transpose(pm)
         pms.append(pm)
+        
+    # Transpose each PM
+    if transpose:
+        pm = [np.transpose(x) for x in pms]
     
     # Make dataframe
     return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
