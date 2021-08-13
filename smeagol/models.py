@@ -16,12 +16,12 @@ class PWMModel:
     def __init__(self, pwm_df):
         # Store information
         self.Matrix_ids = np.array(pwm_df.Matrix_id)
-        self.widths = np.array(pwm_df.weight.apply(lambda x:x.shape[0]))
-        self.max_scores = np.array(pwm_df.weight.apply(lambda x:np.max(x, axis=1).sum()))
+        self.widths = np.array(pwm_df.weights.apply(lambda x:x.shape[0]))
+        self.max_scores = np.array(pwm_df.weights.apply(lambda x:np.max(x, axis=1).sum()))
         self.channels = len(pwm_df)
         self.max_width = max(self.widths)
         self.define_model()
-        self.set_model_weights(pwm_df.weight)
+        self.set_model_weights(pwm_df.weights)
     def define_model(self):
         """Define the conv model
         """
@@ -54,6 +54,38 @@ class PWMModel:
         padded_weights = self.pad_weights(weights)
         self.model.layers[2].set_weights([np.array(list(one_hot_dict.values()))])
         self.model.layers[4].set_weights([padded_weights])
-    def predict(self, encoded_seq):
-        input_seq = tf.convert_to_tensor(encoded_seq, dtype=tf.float32)
-        return self.model.predict(input_seq)
+    def predict(self, encoded_seqs):
+        """Scan encoded sequences with the model.
+        """
+        predictions = self.model.predict(tf.convert_to_tensor(encoded_seqs, dtype=tf.float32))
+        return predictions
+    def predict_with_threshold(self, encoded_seqs, frac_threshold, score=False):
+        """Scan encoded sequences with the model and threshold the returned values.
+    
+        Args:
+            encoded_seq (list): integer encoded sequence
+            frac_threshold (float): fraction of maximum score to use as binding site detection threshold
+            score (bool): Output binding site scores as well as positions
+        
+        Returns:
+            thresholded (np.array): positions where the input sequence(s) match the input 
+                                PWM(s) with a score above the specified threshold.
+            scores (np.array): score for each potential binding site
+        
+        """
+        # Get threshold for each PWM
+        assert (frac_threshold >= 0) & (frac_threshold <= 1) 
+        thresholds = frac_threshold * self.max_scores
+        # Inference using convolutional model
+        predictions = self.predict(encoded_seqs)
+        # Threshold predictions
+        thresholded = np.where(predictions > thresholds)
+        # Trim sites that extend beyond sequence end
+        select = thresholded[1] + self.widths[thresholded[2]] <= encoded_seqs.shape[1]
+        thresholded = [x[select] for x in thresholded]
+        # Combine site locations with scores
+        if score:
+            scores = predictions[thresholded]
+        else:
+            scores = None
+        return thresholded, scores
