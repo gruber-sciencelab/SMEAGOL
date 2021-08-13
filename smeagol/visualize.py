@@ -25,7 +25,7 @@ def plot_pwm(pwm_df, Matrix_id, height=15):
         Plots PWM
         
     """
-    weights = pwm_df.weight.values[pwm_df.Matrix_id==Matrix_id]
+    weights = pwm_df.weights.values[pwm_df.Matrix_id==Matrix_id]
     pm = np.exp2(weights[0])/4
     pm = seqlogo.Ppm(pm/np.expand_dims(np.sum(pm, axis=1),1))
     options = wl.LogoOptions(unit_name = 'bits', color_scheme = wl.std_color_schemes['classic'], 
