@@ -48,19 +48,13 @@ def write_fasta(records, file, gz=True):
     Params:
         records (list): list of seqRecord objects to write.
         file (str): path to file
-        gz (bool): whether output file should be compressed.
     
     Returns:
         Writes records to the file
     """
     
-    # Check file name
-    if gz:
-        if not file.endswith('.gz'):
-            raise ValueError('file name for gzipped file should end with .gz')
-    
     # Function to open the file
-    _open = partial(gzip.open, mode='wt') if gz else partial(open, mode='wt')
+    _open = partial(gzip.open, mode='wt') if file.endswith('.gz') else partial(open, mode='wt')
     
     # Open the file and write sequences
     with _open(file) as output_handle:
