@@ -42,6 +42,7 @@ def test_read_pms_from_file():
                                      np.array([[0.97, 0.01, 0.01, 0.01], 
                                                [0.58, 0.01, 0.4, 0.01], 
                                                [0.01, 0.2, 0.4, 0.39]])]})
+    assert result == expected
 
     
 def test_read_pms_from_dir():
@@ -56,3 +57,4 @@ def test_read_pms_from_dir():
                                                [20, 0, 0, 0],
                                                [1, 4, 13, 2],
                                                [0, 1, 17, 2]], dtype='float32')]})
+    assert result == expected
