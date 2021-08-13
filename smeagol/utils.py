@@ -1,9 +1,33 @@
+import numpy as np
+from ushuffle import shuffle, set_seed
+
 # Biopython imports
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 # Smeagol imports
-from ushuffle import shuffle, set_seed
+from smeagol.io import write_fasta
+
+
+def equals(x, y, eps=1e-4):
+    """Function to test whether two values or lists/arrays are equal with some tolerance.
+    
+    Args:
+        x, y: float, int, list or np.array objects
+        eps: tolerance value
+        
+    Returns:
+        True if x and y are equal within the tolerance limit, False otherwise
+        
+    """
+    if type(x) == type(y) == np.ndarray:
+        assert x.shape == y.shape
+        return np.all(abs(x - y) < (eps * x.size))
+    elif type(x) == type(y) == list:
+        assert len(x) == len(y)
+        return np.all(abs(x - y) < (eps * len(x)))
+    else:
+        return abs(x - y) < eps
 
 
 def shuffle_records(records, simN, simK, out_file=None, seed=1):
