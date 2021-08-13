@@ -2,37 +2,7 @@ import pandas as pd
 import numpy as np
 import itertools
 
-from .encode import MultiSeqEncoding
-
-
-def predict(encoding, model, threshold, score=False):
-    """Prediction by scanning an encoded sequence with a convolutional model.
-    
-    Args:
-        encoding (SeqEncoding): SeqEncoding object
-        model (model): Prameterized convolutional model
-        threshold (float): fraction of maximum score to use as binding site detection threshold
-        score (bool): Output binding site scores as well as positions
-        
-    Returns:
-        thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-        scores (np.array): score for each potential binding site
-        
-    """
-    # Get threshold for each PWM
-    assert (threshold >= 0) & (threshold <= 1) 
-    thresholds = threshold * model.max_scores
-    # Inference using convolutional model
-    predictions = model.predict(encoding.seqs)
-    # Threshold predictions
-    thresholded = np.where(predictions > thresholds)
-    # Combine site locations with scores
-    if score:
-        scores = predictions[thresholded]
-    else:
-        scores = None
-    return thresholded, scores
+from .encode import SeqGroups
 
 
 def locate_sites(encoding, model, thresholded, scores=None):
@@ -63,7 +33,7 @@ def locate_sites(encoding, model, thresholded, scores=None):
         sites['score'] = scores
         sites['max_score'] = model.max_scores[pwm_idx]
         sites['frac_score'] = sites['score']/sites['max_score']
-    sites = sites[sites.end <= encoding.len].reset_index(drop=True)
+    #sites = sites[sites.end <= encoding.len].reset_index(drop=True)
     return sites
 
 
@@ -115,7 +85,8 @@ def count_sites(encoding, model, thresholded):
                             'num': []})
     else:
         pwm_idx = thresholded[2]
-        result = pd.crosstab(index = [model.Matrix_ids[pwm_idx], model.widths[pwm_idx]], 
+        widths = model.widths[pwm_idx]
+        result = pd.crosstab(index = [model.Matrix_ids[pwm_idx], widths], 
                          columns = [encoding.ids[seq_idx], 
                                     encoding.names[seq_idx], 
                                     encoding.senses[seq_idx]])
@@ -148,10 +119,10 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False)
     if 'binned_counts' in outputs:
         score = True
         assert type(threshold) == np.ndarray
-        thresholded, scores = predict(encoding, model, min(threshold), score)
+        thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score)
         output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     else:
-        thresholded, scores = predict(encoding, model, threshold, score)
+        thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score)
     if 'sites' in outputs:
         output['sites'] = locate_sites(encoding, model, thresholded, scores)
     if ('counts'  in outputs) or ('stats' in outputs):
@@ -166,11 +137,11 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False)
     return output
 
 
-def find_sites_multiseq(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False):
-    """Function to predict binding sites on class MultiSeqEncoding.
+def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_groups=False, sep_ids=False):
+    """Function to predict binding sites on class SeqGroups.
     
     Args:
-        encoding (MultiSeqEncoding): object of class MultiSeqEncoding
+        encoding (SeqGroups): object of class SeqGroups
         model (model): class PWMModel
         threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
         outputs (list): List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts' 
@@ -181,7 +152,7 @@ def find_sites_multiseq(encoding, model, threshold, outputs=['sites'], score=Fal
                         'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
                         across multiple sequences.
         score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
-        combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
+        combine_groups (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
     
     Returns: 
@@ -189,17 +160,18 @@ def find_sites_multiseq(encoding, model, threshold, outputs=['sites'], score=Fal
         
     """
     # Find binding sites per sequence or group of sequences
-    if combine_seqs and ('stats' in outputs):
+    inter_outputs = outputs.copy()
+    if combine_groups and ('stats' in outputs):
         if 'counts' not in outputs:
-            outputs.extend('counts')
-        outputs.remove('stats')
-    output_per_seq = [find_sites_seq(seq, model, threshold, outputs, score=score) for seq in encoding.seqs]
+            inter_outputs.append('counts')
+        inter_outputs.remove('stats')
+    output_per_seq = [find_sites_seq(seq, model, threshold, inter_outputs, score=score) for seq in encoding.seqs]
     # Concatenate binding sites
     output = {}
     for key in output_per_seq[0].keys():
         output[key] = pd.concat([x[key] for x in output_per_seq]).reset_index(drop=True)
     # Combine binding sites
-    if combine_seqs:
+    if combine_groups:
         if sep_ids:
             if 'counts' in output.keys():
                 output['counts'] = output['counts'].groupby(['Matrix_id', 'width', 'sense', 'id']).num.sum().reset_index()
@@ -211,7 +183,7 @@ def find_sites_multiseq(encoding, model, threshold, outputs=['sites'], score=Fal
             if 'binned_counts' in output.keys():
                 output['binned_counts'] = output['binned_counts'].groupby(['Matrix_id', 'width', 'sense', 'bin']).num.sum().reset_index()
         # Calculate stats
-        if stats:
+        if 'stats' in outputs:
             stats = output['counts'].groupby(['Matrix_id', 'width', 'sense']).agg([len, np.mean, np.std]).reset_index()
             stats.columns = ['Matrix_id', 'width', 'sense', 'len', 'avg', 'sd'] 
             output['stats'] = stats 
@@ -248,7 +220,7 @@ def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'],
         
     """
     # Encode the sequences
-    encoded = MultiSeqEncoding(seqs, rcomp=rcomp, sense=sense)
+    encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense)
     # Find sites
     preds = find_sites_multiseq(encoded, model, threshold=threshold, outputs=outputs, combine_seqs=combine_seqs)
     return preds
