@@ -112,7 +112,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     return results
 
 
-def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True):
+def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_groups=True):
     """Function to compare the number of binding sites at various thresholds.
             
     Args:
@@ -124,22 +124,21 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
         sense (str): '+' or '-'        
         min_threshold (float): minimum threshold for a binding site (0 to 1)
         verbose (bool): output all information
-        combine_seqs (bool): combine outputs for multiple sequences into single dataframe
+        combine_groups (bool): combine outputs for multiple sequences into single dataframe
         
     Returns:
         results (dict): dictionary containing results. 
     """
-    encoded = MultiSeqEncoding(records, rcomp=rcomp, sense=sense)
+    encoded = SeqGroups(records, rcomp=rcomp, sense=sense)
     shuf = shuffle_records(records, simN, simK)
-    encoded_shuffled = SeqGroups(shuf, sense=sense, rcomp=rcomp, group_by_name=True)
+    encoded_shuffled = SeqGroups(shuf, sense=sense, rcomp=rcomp, group_by='name')
     thresholds = np.arange(min_threshold, 1.0, 0.1)
-    real_binned = find_sites_in_groups(encoded, model, thresholds, binned_counts=True, combine_seqs=combine_seqs)['binned_counts']
-    shuf_binned = find_sites_in_groups(encoded_shuffled, model, thresholds, binned_counts=True, combine_seqs=combine_seqs, sep_ids=True)['binned_counts']
+    real_binned = find_sites_in_groups(encoded, model, thresholds, outputs=['binned_counts'], combine_groups=combine_groups)['binned_counts']
+    shuf_binned = find_sites_in_groups(encoded_shuffled, model, thresholds, outputs=['binned_counts'], combine_groups=combine_groups, sep_ids=True)['binned_counts']
     results = {'real_binned':real_binned, 'shuf_binned': shuf_binned}
     if verbose:
         results['shuf_seqs'] = shuf
     return results
-
 
 
 def enrich_in_window(window, sites, genome, matrix_id):
