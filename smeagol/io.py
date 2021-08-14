@@ -174,7 +174,7 @@ def read_pms_from_dir(dirname, matrix_type='PPM', transpose=False):
     pms = []
     
     # List files
-    files = os.listdir(dirname)
+    files = sorted(os.listdir(dirname))
     
     # Read individual files
     for file in files:

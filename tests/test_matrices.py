@@ -2,6 +2,7 @@ from smeagol.matrices import *
 import os
 import pandas as pd
 from smeagol.utils import equals
+import pytest
 
 
 script_dir = os.path.dirname(__file__)
@@ -46,8 +47,8 @@ def test_check_pwm():
 
 def test_normalize_pm():
     probs = np.array([[0.1, 0.1, 0.1, 0.7], [.5, .48, 0.01, 0.01], [.1, .6, .1, .2]])
-    assert normalize_pm(probs) == probs
-    probs = np.array([[0.1, 0.1, 0.1, 0.8], [.5, .48, 0.01, 0.01], [.1, .6, .2, .2]])
+    assert np.all(normalize_pm(probs) == probs)
+    probs = np.array([[0.1, 0.1, 0.1, 0.8], [.5, .48, 0.01, 0.01], [.1, .6, .1, .2]])
     expected = np.array([[0.09090909, 0.09090909, 0.09090909, 0.72727273], 
                          [.5, .48, 0.01, 0.01],
                          [.1, .6, .1, .2]])
@@ -62,21 +63,21 @@ def test_entropy():
 
 def test_position_wise_ic():
     probs = np.array([[0.1, 0.1, 0.1, 0.7], [.5, .48, 0.01, 0.01], [.1, .6, .1, .2]])
-    expected = [0.6432203505529606, 0.8588539054587927, 0.42904940554533133]
+    expected = np.array([0.6432203505529606, 0.8588539054587927, 0.42904940554533133])
     assert equals(position_wise_ic(probs), expected)
     
 
 def test_matrix_conversions():
     freqs = np.array([[0, 0, 0, 10], [5, 5, 0, 0], [1, 6, 2, 1]])
     probs = pfm_to_ppm(freqs, pseudocount = 1)
-    expected = np.array([1/14, 1/14, 1/14, 11/14], 
-                        [6/14, 6/14, 1/14, 1/14], 
-                        [2/14, 7/14, 3/14, 2/14])
+    expected = np.array([[.25/11, .25/11, .25/11, 10.25/11], 
+                        [5.25/11, 5.25/11, .25/11, .25/11], 
+                        [1.25/11, 6.25/11, 2.25/11, 1.25/11]])
     assert equals(probs, expected)
     weights = ppm_to_pwm(probs)
-    expected = np.array([-5.807354922057605, -5.807354922057605, -5.807354922057605, -2.347923303420307],
-                        [-3.222392421336448, -3.222392421336448, -5.807354922057605, -5.807354922057605],
-                        [-4.807354922057605, -3, -4.222392421336448, -4.807354922057605])
+    expected = np.array([[-3.45943162, -3.45943162, -3.45943162,  1.89812039],
+       [ 0.9328858 ,  0.9328858 , -3.45943162, -3.45943162],
+       [-1.13750352,  1.18442457, -0.28950662, -1.13750352]])
     assert equals(weights, expected)
     assert equals(pwm_to_ppm(weights), probs)
     
@@ -84,14 +85,14 @@ def test_matrix_conversions():
 def test_trim_ppm():
     probs = np.array([[0.1, 0.1, 0.1, 0.7], 
                       [.5, .48, 0.01, 0.01], 
-                      [.2, .4, .2, .2], 
+                      [.25, .25, .3, .2], 
                       [0.1, 0.1, 0.1, 0.7],
-                      [.2, .4, .2, .2]])
+                      [.25, .25, .3, .2]])
     result = trim_ppm(probs, frac_threshold = 0.05)
-    expected = np.array([[0.1, 0.1, 0.1, 0.7], 
-                         [.5, .48, 0.01, 0.01], 
-                         [.2, .4, .2, .2], 
-                         [0.1, 0.1, 0.1, 0.7]])
+    expected = probs = np.array([[0.1, 0.1, 0.1, 0.7], 
+                      [.5, .48, 0.01, 0.01], 
+                      [.25, .25, .3, .2], 
+                      [0.1, 0.1, 0.1, 0.7]])
     assert equals(result, expected) 
 
 
@@ -121,10 +122,8 @@ def test_ncorr():
                   [-0.99106688, -1.97336487,  1.31654155, -0.41205364]])
     result = ncorr(X, Y, min_overlap=3)
     assert equals(result, 0.25069190635147276)
-    result = ncorr(X, Y, min_overlap=1)
-    assert equals(result, 0.13176571002819804)
-    result = ncorr(Y, X, min_overlap=1)
-    assert equals(result, 0.13176571002819804)
+    result = ncorr(Y, X, min_overlap=3)
+    assert equals(result, 0.25069190635147276)
 
     
 def test_pairwise_ncorrs():
@@ -146,10 +145,7 @@ def test_choose_representative_pm():
     
 def test_cluster_pms():
     df = pd.read_hdf(os.path.join(data_path, 'test_pwms.hdf5'), key='data')
-    result = cluster_pms(df, n_clusters=2, sims=None, weight_col='weight')
-    assert type(result.clusters) == list
-    assert len(result.clusters) == 3
-    assert type(result.reps) == list
-    assert len(result.reps) == 2
-    assert type(result.min_ncorr) == list
-    assert len(result.min_ncorr) == 2
+    result = cluster_pms(df, n_clusters=2, sims=None, weight_col='weights')
+    assert len(result['clusters']) == 3
+    assert len(result['reps']) == 2
+    assert len(result['min_ncorr']) == 2

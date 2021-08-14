@@ -33,7 +33,6 @@ def locate_sites(encoding, model, thresholded, scores=None):
         sites['score'] = scores
         sites['max_score'] = model.max_scores[pwm_idx]
         sites['frac_score'] = sites['score']/sites['max_score']
-    #sites = sites[sites.end <= encoding.len].reset_index(drop=True)
     return sites
 
 

@@ -82,7 +82,7 @@ class PWMModel:
         thresholded = np.where(predictions > thresholds)
         # Trim sites that extend beyond sequence end
         select = thresholded[1] + self.widths[thresholded[2]] <= encoded_seqs.shape[1]
-        thresholded = [x[select] for x in thresholded]
+        thresholded = tuple(x[select] for x in thresholded)
         # Combine site locations with scores
         if score:
             scores = predictions[thresholded]

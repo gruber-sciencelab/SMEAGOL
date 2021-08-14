@@ -162,7 +162,7 @@ def trim_ppm(probs, frac_threshold):
     assert (frac_threshold >= 0) and (frac_threshold <= 1) 
     
     # Calculate information content
-    pos_ic = position_wise_ic(probs, axis=1)
+    pos_ic = position_wise_ic(probs)
     
     # Identify positions to trim
     to_trim = (pos_ic/np.mean(pos_ic)) < frac_threshold
@@ -220,7 +220,61 @@ def matrix_correlation(X, Y):
     corr = np.corrcoef(np.concatenate(X), np.concatenate(Y))[0,1]
 
     return corr
+
+
+def order_pms(X, Y):
+    """Function to order two matrices by width.
     
+    Inputs:
+        X, Y (np.array): two position matrices.
+        
+    Returns:
+        X, Y (np.array): two position matrices ordered by width.
+    """
+    if len(Y) < len(X):
+        X, Y = Y, X
+    return X, Y
+
+
+def align_pms(X, Y, min_overlap=None):
+    """Function to calculate normalized correlation between two position matrices.
+    
+    Inputs:
+        X, Y (np.array): two position matrices.
+        min_overlap (int): minimum overlap allowed between matrices
+        
+    Returns:
+        result: tuples containing matrix start and end positions corresponding to each alignment.
+    """
+    
+    X, Y = order_pms(X, Y)
+    Lx = len(X)
+    Ly = len(Y)
+    
+    # Set minimum allowed overlap
+    if min_overlap is not None:
+        assert type(min_overlap) == int
+        assert (min_overlap > 0) & (min_overlap <= Lx)
+    else:
+        min_overlap = min(3, Lx)
+
+    # Identify different possible alignments of the two matrices
+    aln_starts = range(min_overlap - Lx, Ly - min_overlap + 1)
+    
+    # Identify the aligned portions of the matrices
+    X_starts = [max(-i, 0) for i in aln_starts] # if i<0, cut X positions that don't align to Y
+    X_ends = [min(Lx, Ly - i) for i in aln_starts] # trim columns of X that don't align to Y on the right
+    Y_starts = [max(i, 0) for i in aln_starts] # if i>0, cut Y from the left
+    Y_ends = [min(Ly, i + Lx) for i in aln_starts] # if i+Lx exceeds Ly, cut alignment at Ly
+    
+    X_w = np.unique([e - s for e, s in zip(X_ends, X_starts)])
+    Y_w = np.unique([e - s for e, s in zip(Y_ends, Y_starts)])
+    assert np.all(X_w == Y_w)
+    assert np.all(X_w >= min_overlap)
+
+    result = zip(X_starts, X_ends, Y_starts, Y_ends)
+    return result
+
 
 def ncorr(X, Y, min_overlap=None):
     """Function to calculate normalized correlation between two position matrices.
@@ -232,34 +286,14 @@ def ncorr(X, Y, min_overlap=None):
     Returns:
         result (float): normalized correlation value
     """
-    # X should be the shorter matrix
     ncorrs = []
-    Lx, Ly = len(X), len(Y)
-    if Ly < Lx:
-        X, Y = Y, X
-        Lx, Ly = Ly, Lx
     
-    # Set minimum allowed overlap
-    if min_overlap is not None:
-        assert type(min_overlap) == int
-        assert (min_overlap > 0) & (min_overlap <= Lx)
-    else:
-        min_overlap = min(3, Lx)
+    X, Y = order_pms(X, Y)
+    alignments = align_pms(X, Y, min_overlap=None)
 
-    # Identify different possible alignments of the two matrices
-    if (Lx == Ly) and ((Lx % 2)==1):
-        aln_starts = range(min_overlap - Lx, Ly - min_overlap + 1)
-    else:
-        aln_starts = range(min_overlap - Lx, Ly - min_overlap)
-        
-    # Calculate normalized correlation for each possible alignment
-    for i in aln_starts:
-        
-        # Identify the aligned portions of the matrices
-        Y_start = max(i, 0) # if i>0, cut Y from the left
-        Y_end = min(Ly, i + Lx) # if i+Lx exceeds Ly, cut alignment at Ly
-        X_start = max(-i, 0) # if i<0, cut X positions that don't align to Y
-        X_end = min(Lx, Ly - i) # trim columns of X that don't align to Y on the right
+    for X_start, X_end, Y_start, Y_end in alignments:
+                
+        # Get portions of matrices that are aligned
         Y_i = Y[Y_start : Y_end, : ]
         X_i = X[X_start : X_end, :]
         
@@ -270,7 +304,7 @@ def ncorr(X, Y, min_overlap=None):
         corr = matrix_correlation(X_i, Y_i)
         
         # Normalize the correlation
-        W = Lx + Ly - w
+        W = len(X) + len(Y) - w
         ncorr = corr * w/W
         ncorrs.append(ncorr)
 
@@ -308,7 +342,7 @@ def pairwise_ncorrs(mats):
 
 # Functions to cluster matrices and choose representatives
 
-def choose_representative_pm(df, sims=None, maximize='median', weight_col='weight', matrix_type='PWM'):
+def choose_representative_pm(df, sims=None, maximize='median', weight_col='weights', matrix_type='PWM'):
     """Function to choose a representative position matrix from a group.
     
     Args:
@@ -353,7 +387,7 @@ def choose_representative_pm(df, sims=None, maximize='median', weight_col='weigh
 
     
 def choose_cluster_representative_pms(df, sims=None, clusters=None, maximize='median',
-                                       weight_col='weight', matrix_type='PWM'):
+                                       weight_col='weights', matrix_type='PWM'):
     """Function to choose a representative position matrix from each cluster.
         
     Args:
@@ -380,13 +414,13 @@ def choose_cluster_representative_pms(df, sims=None, clusters=None, maximize='me
         if sims is not None:
             c_sims = sims[in_cluster, :][:, in_cluster]
         # Choose representative matrix within cluster
-        sel_mat = choose_representative_mat(mats, sims=c_sims, maximize=maximize, 
+        sel_mat = choose_representative_pm(mats, sims=c_sims, maximize=maximize, 
                                             weight_col=weight_col, matrix_type=matrix_type)
         representatives.append(sel_mat)
     return representatives
 
 
-def cluster_pms(df, n_clusters, sims=None, weight_col='weight'):
+def cluster_pms(df, n_clusters, sims=None, weight_col='weights'):
     """Function to cluster position matrices.
             
     Args:

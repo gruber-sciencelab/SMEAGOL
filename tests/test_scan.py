@@ -17,45 +17,36 @@ encoding = SeqEncoding(records, sense='+', rcomp=None)
 
 df = pd.read_hdf(os.path.join(data_path, 'test_pwms.hdf5'), key='data')
 model = PWMModel(df)
-thresholded = [(1, 1),
-               (0, 0),
-               (0, 2)]
+thresholded = [[1, 1],
+               [0, 0],
+               [0, 2]]
 scores = np.array([2.343, 1.929])
-
-
 
 
 def test_locate_sites():
     result = locate_sites(encoding, model, thresholded, scores)
-    assert result.id == ['S1.2', 'S1.2']
-    assert result.name == ['S1', 'S1']
-    assert result.sense == ['+', '+']
-    assert result.start == [0, 0]
-    assert result.Matrix_id == ['x', 'z']
-    assert result.width == [3, 3]
-    assert result.end == [3, 3]
-    assert result.score == [2.343, 1.929]
-    assert equals(result.max_score, [3.33376361, 2.50816981])
-    assert equals(result.frac_score, [0.70280927926, 0.76908668])
+    fields = ['id', 'name', 'sense', 'start', 'Matrix_id', 'width', 'end', 'score']
+    expected = [['S1.2', 'S1.2'], ['S1', 'S1'], ['+', '+'], [0, 0], ['x', 'z'], [3, 3], [3, 3], [2.343, 1.929]]
+    for field, exp in zip(fields, expected):
+        assert np.all(result[field].values == exp)
+    assert equals(result.max_score.values, np.array([3.33376361, 2.50816981]))
+    assert equals(result.frac_score.values, np.array([0.70280927926, 0.76908668]))
 
 
 def test_bin_sites_by_score():
+    thresholded, scores = model.predict_with_threshold(encoding.seqs, 0.25, True)
     result = bin_sites_by_score(encoding, model, thresholded, scores, [.25, .5, .75])
-    assert result.Matrix_id == ['z', 'x', 'z', 'z']
-    assert result.width == [3] * 4
-    assert result.id == ['S1.1', 'S1.2', 'S1.2', 'S1.2']
-    assert result.name == ['S1'] * 4
-    assert result.sense == ['*'] * 4
-    assert [str(x) for x in result.bin] == ['(0.25, 0.5]', '(0.5, 0.75]', '(0.75, 1.0]',
-                                            '(0.25, 0.5]']
-    assert result.num == [2, 1, 1, 1]
+    fields = ['id', 'name', 'sense', 'Matrix_id', 'width']
+    expected = [['S1.1', 'S1.1', 'S1.2', 'S1.2', 'S1.2', 'S1.2'], ['S1'] * 6, ['+'] * 6, ['x', 'z', 'x', 'z', 'x', 'z'], [3] * 6]
+    for field, exp in zip(fields, expected):
+        assert np.all(result[field].values == exp)
+    assert np.all([str(x) for x in result.bin] == ['(0.25, 0.5]']*2 + ['(0.5, 0.75]']*2 + ['(0.75, 1.0]']*2)
+    assert np.all(result.num == [0, 2, 1, 0, 0, 1])
 
 
 def test_count_sites():
     result = count_sites(encoding, model, thresholded)
-    assert result.Matrix_id == ['x', 'z']
-    assert result.width == [3, 3]
-    assert result.id == ['S1.2', 'S1.2']
-    assert result.name == ['S1', 'S1']
-    assert result.sense == ['+', '+']
-    assert result.num == [1, 1]
+    fields = ['id', 'name', 'sense', 'Matrix_id', 'width', 'num']
+    expected = [['S1.2', 'S1.2'], ['S1', 'S1'], ['+', '+'], ['x', 'z'], [3, 3], [1, 1]]
+    for field, exp in zip(fields, expected):
+        assert np.all(result[field].values == exp)

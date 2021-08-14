@@ -15,9 +15,9 @@ def test_shuffle_records():
     def dinuc_freqs(x):
         dinucs = sorted([x[i:i+2] for i in range(len(x) - 1)])
         return Counter(dinucs)
-    ref_freqs = [dinuc_freqs(x) for x in records]
+    ref_freqs = [dinuc_freqs(x.seq.__str__()) for x in records]
     shuf = shuffle_records(records, 3, 2)
-    assert len(shuf) = 6
-    shuf_freqs = [dinuc_freqs(x) for x in shuf]
+    assert len(shuf) == 6
+    shuf_freqs = [dinuc_freqs(x.seq.__str__()) for x in shuf]
     assert shuf_freqs[0] == shuf_freqs[1] == shuf_freqs[2] == ref_freqs[0]
     assert shuf_freqs[3] == shuf_freqs[4] == shuf_freqs[5] == ref_freqs[1]

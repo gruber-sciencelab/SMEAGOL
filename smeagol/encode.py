@@ -62,7 +62,7 @@ def integer_encode(record, rcomp=False):
     else:
         seq = record.seq
     # Encode
-    result = [integer_encoding_dict.get(base) for base in seq]
+    result = [integer_encoding_dict[base] for base in seq]
     return result  
 
 
@@ -94,9 +94,10 @@ class SeqEncoding:
             self.senses = np.concatenate([self.senses, [sense]*len(records)])
         if rcomp is not None:
             self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in records]])
+            self.senses = np.concatenate([self.senses, [sense_complement_dict[sense]]*len(records)])
+        if rcomp == 'both':    
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
-            self.senses = np.concatenate([self.senses, [sense_complement_dict[sense]]*len(records)])
     def check_equal_lens(self, records):
         if len(records) > 1:
             lens = np.unique([len(record.seq) for record in records])
@@ -117,7 +118,7 @@ class SeqGroups:
     
     """
     def __init__(self, records, rcomp=None, sense=None, group_by=None):
-        if type(records) == 'str':
+        if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) > 1:
             records = self.group_by(records, group_by)
