@@ -1,4 +1,4 @@
-biasaway~=3.3.0
+ushuffle~=1.1.2
 biopython~=1.79
 h5py~=3.1.0
 jupyterlab~=3.0.16  

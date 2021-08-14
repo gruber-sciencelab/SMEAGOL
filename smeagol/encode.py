@@ -2,15 +2,19 @@
 import numpy as np
 import pandas as pd
 import itertools
+from collections import defaultdict
 
 # Biopython imports
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+# SMEAGOL imports
+from .io import read_fasta
 
 # Dictionaries
 
 one_hot_dict = {
+    'Z': [0, 0, 0, 0],
     'A': [1, 0, 0, 0],
     'C': [0, 1, 0, 0],
     'G': [0, 0, 1, 0],
@@ -25,19 +29,18 @@ one_hot_dict = {
     'B': [0, 1/3, 1/3, 1/3],
     'D': [1/3, 0, 1/3, 1/3],
     'H': [1/3, 1/3, 0, 1/3],
-    'V': [1/3, 1/3, 1/3, 0],
-    'Z': [0, 0, 0, 0]
+    'V': [1/3, 1/3, 1/3, 0]
 }
 
 sense_complement_dict = {
     '+':'-', 
-    '-':'+'
+    '-':'+',
 }
 
 bases = list(one_hot_dict.keys())
 integer_encoding_dict = {}
-for x in range(len(bases)):
-    integer_encoding_dict[bases[x]] = x
+for i, base in enumerate(bases):
+    integer_encoding_dict[base] = i
 
     
 # Sequence encoding
@@ -59,10 +62,7 @@ def integer_encode(record, rcomp=False):
     else:
         seq = record.seq
     # Encode
-    result = np.array([integer_encoding_dict.get(base) for base in seq])
-    # Shape
-    result = np.expand_dims(result, 0)
-    result = np.expand_dims(result, 2)
+    result = [integer_encoding_dict[base] for base in seq]
     return result  
 
 
@@ -70,57 +70,63 @@ class SeqEncoding:
     """Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
     
     Args:
-        records (list): list of seqrecord objects
-        rcomp (bool): encode sequence reverse complement as well as original sequence
+        records (list / str): list of seqrecord objects or FASTA file
+        rcomp (str): 'only' to encode the sequence reverse complement, or 'both' 
+                     to encode the reverse complement as well as original sequence
         sense (str): sense of sequence(s), '+' or '-'.
       
     Raises:
         ValueError: if sequences have unequal length.
     
     """
-    def __init__(self, records, rcomp=False, sense=None):
-        self.reverse_complemented = False
+    def __init__(self, records, rcomp=None, sense=None):
+        if type(records) == 'str':
+            records = read_fasta(records)
         self.check_equal_lens(records)
         self.len = len(records[0].seq)
-        self.seqs = np.concatenate([integer_encode(record, rcomp=False) for record in records], axis=0)
         self.ids = np.array([record.id for record in records])
         self.names = np.array([record.name for record in records])
-        self.senses = np.array([sense]*len(records))
-        if rcomp:
-            rcomp_encoded = np.concatenate([integer_encode(record, rcomp=True) for record in records], axis=0)
-            self.seqs = np.concatenate([self.seqs, rcomp_encoded], axis=0)
+        self.seqs = np.empty(shape=(0, self.len))
+        self.senses = []
+        assert rcomp in [None, 'both', 'only'], "rcomp should be 'only' or 'both', or else None."
+        if rcomp != 'only':
+            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=False) for record in records]])
+            self.senses = np.concatenate([self.senses, [sense]*len(records)])
+        if rcomp is not None:
+            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in records]])
+            self.senses = np.concatenate([self.senses, [sense_complement_dict[sense]]*len(records)])
+        if rcomp == 'both':    
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
-            self.senses = np.append(self.senses, [sense_complement_dict[sense] for sense in self.senses])
-            self.reverse_complemented = True
     def check_equal_lens(self, records):
         if len(records) > 1:
-            lens = [len(record.seq) for record in records]
-            if len(np.unique(lens)) != 1:
+            lens = np.unique([len(record.seq) for record in records])
+            if len(lens) != 1:
                 raise ValueError("Cannot encode - sequences have unequal length!")
 
     
-class MultiSeqEncoding:
-    """Encodes multiple sets of sequences, each of which may have different length.
+class SeqGroups:
+    """Encodes one or more groupings of equal-length sequences. 
+       Sequences in different groupings may have different lengths.
     
     Args:
-        records (list): list of seqrecord objects
-        rcomp (bool): encode sequence reverse complement as well as original sequence
-        sense (str): sense of sequence(s), '+' or '-'.
-        group_by_name (bool): group sequences by their name
+        records (list / str): list of seqrecord objects or FASTA file
+        rcomp (str): 'only' to encode the sequence reverse complements, or 'both' to encode the reverse
+                     complements as well as original sequences
+        sense (str): sense of sequences, '+' or '-'.
+        group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
     
     """
-    def __init__(self, records, rcomp=False, sense=None, group_by_name=False):
-        if (group_by_name) and (len(records)) > 1:
-            records = self.group_by_name(records)
-            self.seqs = [SeqEncoding(records, sense=sense, rcomp=rcomp) for records in records]
+    def __init__(self, records, rcomp=None, sense=None, group_by=None):
+        if type(records) == str:
+            records = read_fasta(records)
+        if (group_by is not None) and (len(records)) > 1:
+            records = self.group_by(records, group_by)
+            self.seqs = [SeqEncoding(record, sense=sense, rcomp=rcomp) for record in records]
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
-    def group_by_name(self, records):
-        records_dict = {}
+    def group_by(self, records, key):
+        records_dict = defaultdict(list)
         for record in records:
-            if record.name in records_dict.keys():
-                records_dict[record.name].append(record)
-            else:
-                records_dict[record.name] = [record]
+            records_dict[record.__getattribute__(key)].append(record)
         return records_dict.values()

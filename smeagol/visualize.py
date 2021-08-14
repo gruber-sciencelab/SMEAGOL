@@ -25,7 +25,7 @@ def plot_pwm(pwm_df, Matrix_id, height=15):
         Plots PWM
         
     """
-    weights = pwm_df.weight.values[pwm_df.Matrix_id==Matrix_id]
+    weights = pwm_df.weights.values[pwm_df.Matrix_id==Matrix_id]
     pm = np.exp2(weights[0])/4
     pm = seqlogo.Ppm(pm/np.expand_dims(np.sum(pm, axis=1),1))
     options = wl.LogoOptions(unit_name = 'bits', color_scheme = wl.std_color_schemes['classic'], 
@@ -87,50 +87,53 @@ def plot_binned_count_dist(real_preds, Matrix_id, sense, shuf_preds=None, roundi
             plt.savefig(file_path, facecolor='white')
 
 
-def plot_background(shuf_counts, real_counts, Matrix_ids, genome_len=None, 
-                    background='binomial', figsize=(17,8), ncols=4, file_path=None):
+def plot_background(enrichment_result, Matrix_ids, sense, figsize=(17,8), ncols=4, file_path=None):
     """Function to plot the distribution of background counts.
     
     Args:
-        shuf_counts (pd.DataFrame): Dataframe with motif counts in shuffled sequences. 
-        real_counts (pd.DataFrame): Dataframe with motif counts in real sequence.
+        enrichment_result (dict): Dictionary with result from enrich_in_genome
         Matrix_ids (list): IDs of PWMs to plot
-        genome_len (int): total length of genome. Not needed if background = 'normal'.
-        background (str): 'binomial', 'normal' or 'both'
-        figsize (int): total figure size
+        sense (str): '+' or '-'
+        figsize (tuple): total figure size
         ncols (int): number of columns for figure panels
         file_path (str): path to save figure.
     
     Returns:
         Plot of motif distribution in real vs. background sequences.
     """
+    # Setup figure
     ncols = min(len(Matrix_ids), ncols)
-    nrows=int(np.ceil(len(Matrix_ids)/ncols))
+    nrows = int(np.ceil(len(Matrix_ids)/ncols))
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
     axs = axs.flatten()
+
+    # Subset dataframes
+    shuf_counts = enrichment_result['shuf_counts']
+    shuf_counts = shuf_counts[shuf_counts.sense == sense]
+    enr = enrichment_result['enrichment']
+    enr = enr[enr.sense == sense]
+    real_counts = enrichment_result['real_counts']
+    real_counts = real_counts[real_counts.sense == sense]
+
     for i, matrix in enumerate(Matrix_ids):
         # Get shuffled counts
         shuf_nums = shuf_counts[(shuf_counts.Matrix_id==matrix)].num
         
         # Create count table
-        cttable = shuf_nums.value_counts().sort_index()/len(shuf_nums)
+        cttable = shuf_nums.value_counts().sort_index() / len(shuf_nums)
         
         # Plot count table
         axs[i].bar(cttable.index, cttable)
         
-        if background == 'binomial':
-            binom_p = shuf_nums.mean()/genome_len
-            preds = stats.binom(genome_len, binom_p).pmf(cttable.index)
+        if 'p' in enr.columns:
+            enr_curr = enr[(enr.Matrix_id==matrix)]
+            adj_len = enr_curr.adj_len.values[0]
+            binom_p = shuf_nums.mean() / adj_len
+            preds = stats.binom(adj_len, binom_p).pmf(cttable.index)
             axs[i].plot(cttable.index, preds, c='orange')
-        elif background == 'normal':
+        if 'pnorm' in enr.columns:
             preds = stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
-            axs[i].plot(cttable.index, preds, c='orange')
-        if background == 'both':
-            binom_p = shuf_nums.mean()/genome_len
-            binom_preds = stats.binom(genome_len, binom_p).pmf(cttable.index)
-            norm_preds = stats.norm.pdf(cttable.index, shuf_nums.mean(), shuf_nums.std())
-            axs[i].plot(cttable.index, binom_preds, c='orange')
-            axs[i].plot(cttable.index, norm_preds, c='green')
+            axs[i].plot(cttable.index, preds, c='green')
         
         # Add real counts
         real_num = real_counts[(real_counts.Matrix_id==matrix)].num.values
