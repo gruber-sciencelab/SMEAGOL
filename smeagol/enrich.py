@@ -10,7 +10,7 @@ import statsmodels.stats.multitest as multitest
 # Smeagol imports
 from .utils import shuffle_records
 from .encode import SeqGroups
-from .scan import find_sites_in_groups, get_tiling_windows_over_genome, count_in_sliding_windows, count_in_window
+from .scan import scan_sequences, get_tiling_windows_over_genome, count_in_sliding_windows, count_in_window
 
 
 def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', records=None):
@@ -72,7 +72,7 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', records
     return enr_full
 
 
-def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_groups=True):
+def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True):
     """Function to shuffle sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
         
     Args:
@@ -83,39 +83,37 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
         rcomp (bool): calculate enrichment in reverse complement as well as original sequence
         sense (str): '+' or '-'        
         background (str): 'binomial' or 'normal'
-        combine_groups (bool): combine outputs for all sequence groups into single dataframe
+        combine_seqs (bool): combine outputs for all sequence groups into single dataframe
         
     Returns:
         results (dict): dictionary containing results.  
         
     """
-    # Encode sequence
-    encoded = SeqGroups(records, rcomp=rcomp, sense=sense)
     # Find sites on real genome
-    real_preds = find_sites_in_groups(encoded, model, threshold, outputs=['sites', 'counts'], combine_groups=combine_groups)
+    real_preds = scan_sequences(records, model, threshold, sense, rcomp, outputs=['sites', 'counts'], score=False, combine_seqs=combine_seqs)
+
     # Shuffle genome
     shuf = shuffle_records(records, simN, simK)
-    # Encode shuffled genomes
-    encoded_shuffled = SeqGroups(shuf, sense=sense, rcomp=rcomp, group_by='name')
+    
     # Count sites on shuffled genomes
-    if verbose:
-        shuf_preds = find_sites_in_groups(encoded_shuffled, model, threshold, outputs=['counts','stats'], combine_groups=combine_groups, sep_ids=True)
-    else:
-        shuf_preds = find_sites_in_groups(encoded_shuffled, model, threshold, outputs=['stats'], combine_groups=combine_groups, sep_ids=True)
+    shuf_preds = scan_sequences(shuf, model, threshold, sense, rcomp, outputs=['counts', 'stats'], group_by='name', combine_seqs=combine_seqs, sep_ids=True)
+        
     # Calculate binding site enrichment
     enr = enrich_over_shuffled(real_preds['counts'], shuf_preds['stats'], background=background, records=records)
+
     # Combine results
     results = {'enrichment': enr, 
                'real_sites': real_preds['sites'], 
                'real_counts': real_preds['counts'], 
+               'shuf_counts': shuf_preds['counts'],
                'shuf_stats': shuf_preds['stats']}
     if verbose:
-        results['shuf_counts'] = shuf_preds['counts']
+        
         results['shuf_seqs'] = shuf
     return results
 
 
-def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_groups=True):
+def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True):
     """Function to compare the number of binding sites at various thresholds.
             
     Args:
@@ -127,17 +125,22 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
         sense (str): '+' or '-'        
         min_threshold (float): minimum threshold for a binding site (0 to 1)
         verbose (bool): output all information
-        combine_groups (bool): combine outputs for multiple sequences into single dataframe
+        combine_seqs (bool): combine outputs for multiple sequences into single dataframe
         
     Returns:
         results (dict): dictionary containing results. 
     """
-    encoded = SeqGroups(records, rcomp=rcomp, sense=sense)
-    shuf = shuffle_records(records, simN, simK)
-    encoded_shuffled = SeqGroups(shuf, sense=sense, rcomp=rcomp, group_by='name')
     thresholds = np.arange(min_threshold, 1.0, 0.1)
-    real_binned = find_sites_in_groups(encoded, model, thresholds, outputs=['binned_counts'], combine_groups=combine_groups)['binned_counts']
-    shuf_binned = find_sites_in_groups(encoded_shuffled, model, thresholds, outputs=['binned_counts'], combine_groups=combine_groups, sep_ids=True)['binned_counts']
+    
+    # scan real sequence
+    real_binned = scan_sequences(records, model, thresholds, sense, rcomp, outputs=['binned_counts'], combine_seqs=combine_seqs)['binned_counts']
+    
+    # shuffle
+    shuf = shuffle_records(records, simN, simK)
+    
+    # scan shuffled sequence
+    shuf_binned = scan_sequences(shuf, model, thresholds, sense, rcomp, outputs=['binned_counts'], combine_seqs=combine_seqs, group_by='name', sep_ids=True)['binned_counts']
+    
     results = {'real_binned':real_binned, 'shuf_binned': shuf_binned}
     if verbose:
         results['shuf_seqs'] = shuf

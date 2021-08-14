@@ -136,7 +136,7 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False)
     return output
 
 
-def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_groups=False, sep_ids=False):
+def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False):
     """Function to predict binding sites on class SeqGroups.
     
     Args:
@@ -151,7 +151,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
                         'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
                         across multiple sequences.
         score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
-        combine_groups (bool): combine outputs for multiple sequence groups into a single dataframe
+        combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
     
     Returns: 
@@ -160,7 +160,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
     """
     # Find binding sites per sequence or group of sequences
     inter_outputs = outputs.copy()
-    if combine_groups and ('stats' in outputs):
+    if combine_seqs and ('stats' in outputs):
         if 'counts' not in outputs:
             inter_outputs.append('counts')
         inter_outputs.remove('stats')
@@ -170,7 +170,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
     for key in output_per_seq[0].keys():
         output[key] = pd.concat([x[key] for x in output_per_seq]).reset_index(drop=True)
     # Combine binding sites
-    if combine_groups:
+    if combine_seqs:
         if sep_ids:
             if 'counts' in output.keys():
                 output['counts'] = output['counts'].groupby(['Matrix_id', 'width', 'sense', 'id']).num.sum().reset_index()
@@ -192,7 +192,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
     return output
 
 
-def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False):
+def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False):
     """Encode given sequences and predict binding sites on them.
     
     Args:
@@ -211,6 +211,7 @@ def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'],
                         'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
                         across multiple sequences.
         score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
+        group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
         combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
     
@@ -219,9 +220,9 @@ def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'],
         
     """
     # Encode the sequences
-    encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense)
+    encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense, group_by=group_by)
     # Find sites
-    preds = find_sites_multiseq(encoded, model, threshold=threshold, outputs=outputs, combine_seqs=combine_seqs)
+    preds = find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids)
     return preds
     
 
