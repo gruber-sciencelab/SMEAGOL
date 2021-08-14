@@ -98,7 +98,10 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     # Encode shuffled genomes
     encoded_shuffled = SeqGroups(shuf, sense=sense, rcomp=rcomp, group_by='name')
     # Count sites on shuffled genomes
-    shuf_preds = find_sites_in_groups(encoded_shuffled, model, threshold, outputs=['stats'], combine_groups=combine_groups, sep_ids=True)
+    if verbose:
+        shuf_preds = find_sites_in_groups(encoded_shuffled, model, threshold, outputs=['counts','stats'], combine_groups=combine_groups, sep_ids=True)
+    else:
+        shuf_preds = find_sites_in_groups(encoded_shuffled, model, threshold, outputs=['stats'], combine_groups=combine_groups, sep_ids=True)
     # Calculate binding site enrichment
     enr = enrich_over_shuffled(real_preds['counts'], shuf_preds['stats'], background=background, records=records)
     # Combine results
