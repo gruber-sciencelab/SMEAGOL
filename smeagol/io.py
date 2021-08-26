@@ -132,7 +132,7 @@ def read_pms_from_file(file, matrix_type='PPM', check_lens=False, transpose=Fals
         elif matrix_type == 'PWM':
             check_pwm(pm)
         elif matrix_type == 'PPM':
-            check_ppm(pm)
+            check_ppm(pm, warn=True)
         else:
             raise ValueError('matrix_type should be one of: PWM, PPM, PFM.')
     
