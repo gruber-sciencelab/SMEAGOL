@@ -80,7 +80,8 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
         model (PWMModel): parameterized convolutional model
         simN (int): number of shuffles
         simK (int): k-mer frequency to conserve while shuffling
-        rcomp (bool): calculate enrichment in reverse complement as well as original sequence
+        rcomp (str): 'only' to encode the sequence reverse complements, 'both' to encode the reverse
+                     complements as well as original sequences, or 'none'.
         sense (str): '+' or '-'        
         background (str): 'binomial' or 'normal'
         combine_seqs (bool): combine outputs for all sequence groups into single dataframe
@@ -121,7 +122,8 @@ def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, 
         model (PWMModel): parameterized convolutional model
         simN (int): number of shuffles
         simK (int): k-mer frequency to conserve while shuffling
-        rcomp (bool): calculate enrichment in reverse complement as well as original sequence
+        rcomp (str): 'only' to encode the sequence reverse complements, 'both' to encode the reverse
+                     complements as well as original sequences, or 'none'.
         sense (str): '+' or '-'        
         min_threshold (float): minimum threshold for a binding site (0 to 1)
         verbose (bool): output all information

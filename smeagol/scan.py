@@ -192,7 +192,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
     return output
 
 
-def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False):
+def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False):
     """Encode given sequences and predict binding sites on them.
     
     Args:
@@ -201,8 +201,8 @@ def scan_sequences(seqs, model, threshold, sense, rcomp=None, outputs=['sites'],
         model (model): class PWMModel
         threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
         sense (str): sense of sequence(s), '+' or '-'.
-        rcomp (str): 'only' to encode the sequence reverse complement, or 'both' 
-                     to encode the reverse complement as well as original sequence
+        rcomp (str): 'only' to encode the sequence reverse complement, 'both' 
+                     to encode the reverse complement as well as original sequence, or 'none'
         outputs (list): List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts' 
                         and 'stats'. For example: ['sites', 'counts'].
                         'sites' outputs binding site locations

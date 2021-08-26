@@ -71,15 +71,15 @@ class SeqEncoding:
     
     Args:
         records (list / str): list of seqrecord objects or FASTA file
-        rcomp (str): 'only' to encode the sequence reverse complement, or 'both' 
-                     to encode the reverse complement as well as original sequence
+        rcomp (str): 'only' to encode the sequence reverse complement, 'both' 
+                     to encode the reverse complement as well as original sequence, or 'none'.
         sense (str): sense of sequence(s), '+' or '-'.
       
     Raises:
         ValueError: if sequences have unequal length.
     
     """
-    def __init__(self, records, rcomp=None, sense=None):
+    def __init__(self, records, rcomp='none', sense=None):
         if type(records) == 'str':
             records = read_fasta(records)
         self.check_equal_lens(records)
@@ -88,11 +88,11 @@ class SeqEncoding:
         self.names = np.array([record.name for record in records])
         self.seqs = np.empty(shape=(0, self.len))
         self.senses = []
-        assert rcomp in [None, 'both', 'only'], "rcomp should be 'only' or 'both', or else None."
+        assert rcomp in ['none', 'both', 'only'], "rcomp should be 'none', 'only' or 'both'."
         if rcomp != 'only':
             self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=False) for record in records]])
             self.senses = np.concatenate([self.senses, [sense]*len(records)])
-        if rcomp is not None:
+        if rcomp != 'none':
             self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in records]])
             self.senses = np.concatenate([self.senses, [sense_complement_dict[sense]]*len(records)])
         if rcomp == 'both':    
@@ -111,13 +111,13 @@ class SeqGroups:
     
     Args:
         records (list / str): list of seqrecord objects or FASTA file
-        rcomp (str): 'only' to encode the sequence reverse complements, or 'both' to encode the reverse
-                     complements as well as original sequences
+        rcomp (str): 'only' to encode the sequence reverse complements, 'both' to encode the reverse
+                     complements as well as original sequences, or 'none'.
         sense (str): sense of sequences, '+' or '-'.
         group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
     
     """
-    def __init__(self, records, rcomp=None, sense=None, group_by=None):
+    def __init__(self, records, rcomp='none', sense=None, group_by=None):
         if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) > 1:
