@@ -6,13 +6,6 @@ Smeagol is a library to identify and visualize enrichment (or depletion) of moti
 
 It is recommended to install in a conda environment or virtualenv. SMEAGOL is compatible with Python 3.7 and higher.
 
-To install smeagol using conda, create a new environment and activate it:
-```
-conda create --name smeagol python=3.7
-
-conda activate smeagol
-```
-
 ### 1. Clone this git repository
 ```
 git clone https://github.com/gruber-sciencelab/SMEAGOL
@@ -40,6 +33,8 @@ pytest
 In your python script / notebook, you can import modules or functions from SMEAGOL. For example:
 ```
 import smeagol.visualize
+```
+```
 from smeagol.visualize import plot_background
 ```
 
