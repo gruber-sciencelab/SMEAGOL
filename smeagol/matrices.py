@@ -20,7 +20,7 @@ def check_ppm(probs, warn=False, eps=1e-3):
         ValueError: if probs is an invalid PPM.
         
     """
-    if (np.min(probs) < 0) or (np.max(probs) > 1):
+    if (np.min(probs) < (0 - eps)) or (np.max(probs) > (1 + eps)):
         raise ValueError('Values are not within the range [0,1].')
     rowsums = np.sum(probs, axis=1)
     for s in rowsums:
@@ -33,7 +33,7 @@ def check_ppm(probs, warn=False, eps=1e-3):
         raise ValueError('Input array does not have 4 columns.')
 
 
-def check_pfm(freqs):
+def check_pfm(freqs, warn=False):
     """Function to check validity of a PFM.
     
     Args:
@@ -47,7 +47,10 @@ def check_pfm(freqs):
     if np.min(freqs) < 0:
         raise ValueError('Input array contains values less than 0.')
     if np.any(freqs % 1 != 0):
-        raise ValueError('Input array contains fractional values.')
+        if warn:
+            warnings.warn('Input array contains fractional values.')
+        else:
+            raise ValueError('Input array contains fractional values.')
 
 
 def check_pwm(weights):

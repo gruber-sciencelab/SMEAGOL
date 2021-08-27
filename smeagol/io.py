@@ -128,7 +128,7 @@ def read_pms_from_file(file, matrix_type='PPM', check_lens=False, transpose=Fals
     # Check arrays
     for pm in pms:
         if matrix_type == 'PFM':
-            check_pfm(pm)
+            check_pfm(pm, warn=True)
         elif matrix_type == 'PWM':
             check_pwm(pm)
         elif matrix_type == 'PPM':
@@ -189,11 +189,11 @@ def read_pms_from_dir(dirname, matrix_type='PPM', transpose=False):
     # Check arrays
     for pm in pms:
         if matrix_type == 'PFM':
-            check_pfm(pm)
+            check_pfm(pm, warn=True)
         elif matrix_type == 'PWM':
             check_pwm(pm)
         elif matrix_type == 'PPM':
-            check_ppm(pm)
+            check_ppm(pm, warn=True)
         else:
             raise ValueError('matrix_type should be one of: PWM, PPM, PFM.')
     
