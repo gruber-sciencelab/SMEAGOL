@@ -94,7 +94,7 @@ def count_sites(encoding, model, thresholded):
         return result
 
 
-def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False):
+def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False, seq_batch=0):
     """Function to predict binding sites on encoded sequence(s).
     
     Args:
@@ -109,6 +109,7 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False)
                         'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
                          across multiple sequences.
         score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
+        seq_batch (int): number of sequences to scan at a time. If 0, scan all.
     
     Returns: 
         output (dict): dictionary containing specified outputs.
@@ -118,7 +119,7 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False)
     if 'binned_counts' in outputs:
         score = True
         assert type(threshold) == np.ndarray
-        thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score)
+        thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score, seq_batch)
         output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     else:
         thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score)
@@ -136,7 +137,7 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False)
     return output
 
 
-def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False):
+def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False, seq_batch=0):
     """Function to predict binding sites on class SeqGroups.
     
     Args:
@@ -153,6 +154,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
         score (bool): output scores for binding sites. Only relevant if 'sites' is specified.
         combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
+        seq_batch (int): number of sequences to scan at a time. If 0, scan all.
     
     Returns: 
         output (dict): dictionary containing specified outputs.
@@ -164,7 +166,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
         if 'counts' not in outputs:
             inter_outputs.append('counts')
         inter_outputs.remove('stats')
-    output_per_seq = [find_sites_seq(seq, model, threshold, inter_outputs, score=score) for seq in encoding.seqs]
+    output_per_seq = [find_sites_seq(seq, model, threshold, inter_outputs, score=score, seq_batch=seq_batch) for seq in encoding.seqs]
     # Concatenate binding sites
     output = {}
     for key in output_per_seq[0].keys():
@@ -192,7 +194,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
     return output
 
 
-def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False):
+def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False, seq_batch=0):
     """Encode given sequences and predict binding sites on them.
     
     Args:
@@ -214,6 +216,7 @@ def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'
         group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
         combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
         sep_ids (bool): separate outputs by sequence ID.
+        seq_batch (int): number of sequences to scan at a time. If 0, scan all.
     
     Returns: 
         output (dict): dictionary containing specified outputs.
@@ -222,7 +225,7 @@ def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'
     # Encode the sequences
     encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense, group_by=group_by)
     # Find sites
-    preds = find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids)
+    preds = find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
     return preds
     
 

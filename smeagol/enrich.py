@@ -72,7 +72,7 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', records
     return enr_full
 
 
-def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True):
+def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True, seq_batch=0):
     """Function to shuffle sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
         
     Args:
@@ -85,6 +85,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
         sense (str): '+' or '-'        
         background (str): 'binomial' or 'normal'
         combine_seqs (bool): combine outputs for all sequence groups into single dataframe
+        seq_batch (int): number of shuffled sequences to scan at a time. If 0, scan all.
         
     Returns:
         results (dict): dictionary containing results.  
@@ -97,7 +98,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     shuf = shuffle_records(records, simN, simK)
     
     # Count sites on shuffled genomes
-    shuf_preds = scan_sequences(shuf, model, threshold, sense, rcomp, outputs=['counts', 'stats'], group_by='name', combine_seqs=combine_seqs, sep_ids=True)
+    shuf_preds = scan_sequences(shuf, model, threshold, sense, rcomp, outputs=['counts', 'stats'], group_by='name', combine_seqs=combine_seqs, sep_ids=True, seq_batch=seq_batch)
         
     # Calculate binding site enrichment
     enr = enrich_over_shuffled(real_preds['counts'], shuf_preds['stats'], background=background, records=records)
