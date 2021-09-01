@@ -59,23 +59,8 @@ class PWMModel:
         """
         predictions = self.model.predict(tf.convert_to_tensor(encoded_seqs, dtype=tf.float32))
         return predictions
-    def predict_with_threshold(self, encoded_seqs, frac_threshold, score=False):
-        """Scan encoded sequences with the model and threshold the returned values.
-    
-        Args:
-            encoded_seq (list): integer encoded sequence
-            frac_threshold (float): fraction of maximum score to use as binding site detection threshold
-            score (bool): Output binding site scores as well as positions
-        
-        Returns:
-            thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-            scores (np.array): score for each potential binding site
-        
-        """
-        # Get threshold for each PWM
-        assert (frac_threshold >= 0) & (frac_threshold <= 1) 
-        thresholds = frac_threshold * self.max_scores
+    def predict_batch_with_threshold(self, encoded_seqs, thresholds, score):
+        """Scan encoded sequences with the model and threshold the returned values."""
         # Inference using convolutional model
         predictions = self.predict(encoded_seqs)
         # Threshold predictions
@@ -89,3 +74,47 @@ class PWMModel:
         else:
             scores = None
         return thresholded, scores
+    def predict_with_threshold(self, encoded_seqs, frac_threshold, score=False, seq_batch=0):
+        """Scan encoded sequences in batches with the model and threshold the returned values.
+    
+        Args:
+            encoded_seq (list): integer encoded sequence
+            frac_threshold (float): fraction of maximum score to use as binding site detection threshold
+            score (bool): Output binding site scores as well as positions
+            seq_batch (int): number of sequences to scan at a time. If 0, scan all.
+        
+        Returns:
+            thresholded (np.array): positions where the input sequence(s) match the input 
+                                PWM(s) with a score above the specified threshold.
+            scores (np.array): score for each potential binding site
+        
+        """
+        # Get threshold for each PWM
+        assert (frac_threshold >= 0) & (frac_threshold <= 1) 
+        thresholds = frac_threshold * self.max_scores
+        n_seqs = encoded_seqs.shape[0]
+        if (n_seqs > 1) & (seq_batch > 0) & (seq_batch < n_seqs):
+            encoded_seqs = np.vsplit(encoded_seqs, range(0, n_seqs, seq_batch)[1:])
+            thresholded_list = []
+            scores_list = []
+            for i, batch in enumerate(encoded_seqs):
+                thresholded, scores = self.predict_batch_with_threshold(batch, thresholds, score)
+                thresholded = (thresholded[0] + (i*seq_batch),
+                               thresholded[1],
+                               thresholded[2])
+                thresholded_list.append(thresholded)
+                if score:
+                    scores_list.append(scores)
+            thresholded = tuple([np.concatenate([x[i] for x in thresholded_list]) for i in range(3)])
+            del thresholded_list
+            if score:
+                scores = np.concatenate(scores_list)
+                del scores_list
+            else:
+                scores = None
+        else:
+            thresholded, scores = self.predict_batch_with_threshold(encoded_seqs, thresholds, score)
+        return thresholded, scores
+            
+            
+        
