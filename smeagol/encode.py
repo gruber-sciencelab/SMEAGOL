@@ -62,7 +62,7 @@ def integer_encode(record, rcomp=False):
     else:
         seq = record.seq
     # Encode
-    result = [integer_encoding_dict[base] for base in seq]
+    result = np.array([integer_encoding_dict[base] for base in seq], dtype='float32')
     return result  
 
 
