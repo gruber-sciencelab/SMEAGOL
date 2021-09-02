@@ -122,7 +122,7 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False,
         thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score, seq_batch)
         output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     else:
-        thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score)
+        thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score, seq_batch)
     if 'sites' in outputs:
         output['sites'] = locate_sites(encoding, model, thresholded, scores)
     if ('counts'  in outputs) or ('stats' in outputs):
