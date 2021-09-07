@@ -2,7 +2,39 @@ import pandas as pd
 import numpy as np
 import itertools
 
-from .encode import SeqGroups
+from .encode import SeqGroups, one_hot_dict
+
+
+def score_site(pwm, seq, position_wise=False):
+    """Function to score a binding site sequence.
+    
+     Args:
+        pwm (np.array): PWM weights
+        seq (str): sequence the same length as the PWM.
+     Returns:
+        score (float): PWM score
+    
+    """
+    seq = np.vstack(np.array([one_hot_dict[base] for base in seq], dtype='float32'))
+    assert seq.shape == pwm.shape
+    position_wise_scores = np.sum(np.multiply(seq, pwm), axis=1)
+    if position_wise:
+        return position_wise_scores
+    else:
+        return np.sum(position_wise_scores)
+    
+
+def score_base(pwm, base, pos):
+    """Function to get score for a particular base in a PWM.
+    
+    Args:
+        pwm (np.array): PWM weights
+        base (str): base to score
+        pos (int): relative position of base in the motif
+    Returns:
+        score (float): score for base
+    """
+    return np.sum(np.multiply(pwm[pos, :], one_hot_dict[base]))
 
 
 def locate_sites(encoding, model, thresholded, scores=None):
@@ -199,7 +231,6 @@ def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'
     
     Args:
         seqs (list / str): list of seqrecord objects or fasta file
-        
         model (model): class PWMModel
         threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
         sense (str): sense of sequence(s), '+' or '-'.
