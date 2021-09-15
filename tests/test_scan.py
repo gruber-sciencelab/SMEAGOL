@@ -13,7 +13,7 @@ data_path = os.path.join(script_dir, rel_path)
 
 records = [SeqRecord(seq=Seq('ATTAAA'), id='S1.1', name='S1'),
            SeqRecord(seq=Seq('GCTATA'), id='S1.2', name='S1')]
-encoding = SeqEncoding(records, sense='+', rcomp=None)
+encoding = SeqEncoding(records, sense='+', rcomp='none')
 
 df = pd.read_hdf(os.path.join(data_path, 'test_pwms.hdf5'), key='data')
 model = PWMModel(df)
