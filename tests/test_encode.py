@@ -10,12 +10,12 @@ data_path = os.path.join(script_dir, rel_path)
 def test_integer_encode():
     record = SeqRecord(Seq('ACGTNWSMKRYBDHVZ'), id='id', name='name')
     result = integer_encode(record, rcomp=False)
-    assert result == [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0]
+    assert np.all(result == [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0])
     result = integer_encode(record, rcomp=True)
-    assert result == [0,12,13,14,15,10,11,8,9,7,6,5,1,2,3,4]
+    assert np.all(result == [0,12,13,14,15,10,11,8,9,7,6,5,1,2,3,4])
     record = SeqRecord(Seq('ACGE'))
     with pytest.raises(KeyError):
-        integer_encode(record, rcomp=False)
+        integer_encode(record, rcomp='none')
  
     
 def test_SeqEncoding():
@@ -46,7 +46,7 @@ def test_SeqEncoding():
 def test_SeqGroups():
     records = os.path.join(data_path, 'test.fa.gz')
     result = SeqGroups(records, sense='+')
-    expected = [SeqEncoding([SeqRecord(seq=Seq('ATTAAATA'), id='Seg1', name='Seg1')], sense='+', rcomp=None), SeqEncoding([SeqRecord(seq=Seq('CAAAATCTTTAGGATTAGCAC'), id='Seg2', name='Seg2')], sense='+', rcomp=None)]
+    expected = [SeqEncoding([SeqRecord(seq=Seq('ATTAAATA'), id='Seg1', name='Seg1')], sense='+', rcomp='none'), SeqEncoding([SeqRecord(seq=Seq('CAAAATCTTTAGGATTAGCAC'), id='Seg2', name='Seg2')], sense='+', rcomp='none')]
     for i in range(2):
         assert np.all(result.seqs[i].seqs == expected[i].seqs)
         assert result.seqs[i].ids == expected[i].ids

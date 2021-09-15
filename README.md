@@ -48,6 +48,7 @@ Smeagol contains the following modules:
 - smeagol.encode: functions to encode DNA sequences
 - smeagol.scan: functions to score binding sites 
 - smeagol.enrich: functions to calculate binding site enrichment
+- smeagol.variant: functions to predict the effects of sequence variants
 - smeagol.visualize: functions to generate plots
 
 
