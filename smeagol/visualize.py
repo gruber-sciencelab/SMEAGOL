@@ -181,7 +181,7 @@ def sliding_window_count_plot(df, title, cols=3, aspect=1.4, file_path=None):
         plt.savefig(file_path, transparent=False, facecolor='white', dpi=300)
 
 
-def sliding_window_enrichment_plot(sliding_window_df,x_var,y_var,xticklabels,title,file_path=None):
+def sliding_window_enrichment_plot(sliding_window_df,x_var,y_var,xticklabels,title,fig_size=(12,5),file_path=None):
     """Function to visualize enrichment / depletion analysis using sliding windows.
     
     Args:
@@ -201,7 +201,7 @@ def sliding_window_enrichment_plot(sliding_window_df,x_var,y_var,xticklabels,tit
     plt.close()
     
     # Set the size of the plot
-    plt.figure(figsize=(12, 5))
+    plt.figure(figsize=fig_size)
     
     #sig_sorted = sliding_window_df.sort_values(y_var)['sig']
 
