@@ -31,7 +31,7 @@ def variant_effect_on_site(site, variants):
     
     """
     # Get variants that overlap with site
-    site_variants = variants[(variants.name == site['name']) & (variants.pos >= site.start) & (variants.pos <= site.end)]
+    site_variants = variants[(variants['name'] == site['name']) & (variants.pos >= site.start) & (variants.pos < site.end)]
     if len(site_variants) > 0:
         site_variants = site_variants.merge(pd.DataFrame(site).transpose())
         # Get score of each variant
