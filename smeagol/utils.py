@@ -63,3 +63,23 @@ def shuffle_records(records, simN, simK, out_file=None, seed=1):
         write_fasta(shuf_records, out_file)
 
     return shuf_records
+
+
+def get_Seq(seq):
+    """Function to convert a sequence into a Seq object.
+    
+    Args:
+        seq (str, Seq or SeqRecord): sequence
+        
+    Returns:
+        Seq object
+        
+    """
+    if type(seq) == str:
+        return Seq(seq)
+    elif type(seq) == SeqRecord:
+        return seq.seq
+    elif type(seq) == Seq:
+        return seq
+    else:
+        raise TypeError('Input sequence must be a string, Seqrecord or Seq object.')

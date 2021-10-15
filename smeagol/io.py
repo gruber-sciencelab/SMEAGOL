@@ -207,3 +207,38 @@ def read_pms_from_dir(dirname, matrix_type='PPM', transpose=False):
     
     # Make dataframe
     return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
+
+
+def download_rbpdb(species='human'):
+    """Function to download all motifs and metadata from RBPDB.
+       Downloads version 1.3.1.
+       
+    Args:
+        species (str): 'human', 'mouse', 'fly' or 'worm'.
+        
+    Returns:
+        Motifs are downloaded into the 'motifs/rbpdb/{species}' directory.
+    
+    """
+    download_dir = os.path.join('motifs/rbpdb', species)
+    print(f"Downloading RBPDB version 1.3.1 for species {species} into {download_dir}")
+    if not os.path.exists('motifs/rbpdb'):
+        os.mkdir('motifs/rbpdb')
+    if not os.path.exists(download_dir):
+        os.mkdir(download_dir)
+        meta_file = 'RBPDB_v1.3.1_' + species + '_2012-11-21_TDT'
+        mat_file = 'matrices_' + species
+        url = 'http://rbpdb.ccbr.utoronto.ca/downloads'
+        meta_remote_path = os.path.join(url, meta_file + '.zip')
+        mat_remote_path = os.path.join(url, mat_file + '.zip')
+        meta_local_path = os.path.join(download_dir, meta_file + '.zip')
+        mat_local_path = os.path.join(download_dir, mat_file + '.zip')
+        os.system('wget -P ' +  download_dir + ' ' + meta_remote_path)
+        os.system('wget -P ' + download_dir + ' ' + mat_remote_path)
+        os.system('unzip ' + meta_local_path + ' -d ' + download_dir)
+        os.system('unzip ' + mat_local_path + ' -d ' + download_dir)
+        os.remove(meta_local_path)
+        os.remove(mat_local_path)
+        print("Done")
+    else:
+        print(f"Folder {download_dir} already exists.")

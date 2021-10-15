@@ -10,6 +10,7 @@ from Bio.SeqRecord import SeqRecord
 
 # SMEAGOL imports
 from .io import read_fasta
+from .utils import get_Seq
 
 # Dictionaries
 
@@ -19,6 +20,7 @@ one_hot_dict = {
     'C': [0, 1, 0, 0],
     'G': [0, 0, 1, 0],
     'T': [0, 0, 0, 1],
+    'U': [0, 0, 0, 1],
     'N': [1/4, 1/4, 1/4, 1/4],
     'W': [1/2, 0, 0, 1/2],
     'S': [0, 1/2, 1/2, 0],
@@ -45,35 +47,52 @@ for i, base in enumerate(bases):
     
 # Sequence encoding
 
-def integer_encode(record, rcomp=False):
+def integer_encode(seq, rc=False):
     """Function to integer encode a DNA sequence.
     
     Args:
-      seq (seqrecord): seqrecord object containing a sequence of length L
-      rcomp (bool): reverse complement the sequence before encoding
+      seq (str or Seq): sequence
+      rc (bool): reverse complement the sequence before encoding
+    
+    Returns:
+      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+    
+    """
+    # Convert to Seq object
+    seq = get_Seq(seq)
+    # Reverse complement
+    if rc:
+        seq = seq.reverse_complement()
+    # Encode
+    result = np.array([integer_encoding_dict[base] for base in seq], dtype='float32')
+    return result  
+
+
+def one_hot_encode(seq, rc=False):
+    """Function to one-hot encode a DNA sequence.
+    
+    Args:
+      seq: sequence of length L
+      rc (bool): reverse complement the sequence before encoding
     
     Returns:
       result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
     
     """
     # Reverse complement
-    if rcomp:
-        seq = record.seq.reverse_complement()
-    else:
-        seq = record.seq
+    if rc:
+        seq = get_Seq(seq).reverse_complement()
     # Encode
-    result = np.array([integer_encoding_dict[base] for base in seq], dtype='float32')
+    result = np.vstack(np.array([one_hot_dict[base] for base in seq], dtype='float32'))
     return result  
 
+    
 
 class SeqEncoding:
     """Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
     
     Args:
-        records (list / str): list of seqrecord objects or FASTA file
-        rcomp (str): 'only' to encode the sequence reverse complement, 'both' 
-                     to encode the reverse complement as well as original sequence, or 'none'.
-        sense (str): sense of sequence(s), '+' or '-'.
+        records (list / str): list of strings/Seq/Seqrecord objects or FASTA file
       
     Raises:
         ValueError: if sequences have unequal length.
@@ -89,13 +108,21 @@ class SeqEncoding:
         self.seqs = np.empty(shape=(0, self.len))
         self.senses = []
         assert rcomp in ['none', 'both', 'only'], "rcomp should be 'none', 'only' or 'both'."
-        if rcomp != 'only':
-            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=False) for record in records]])
-            self.senses = np.concatenate([self.senses, [sense]*len(records)])
-        if rcomp != 'none':
-            self.seqs = np.vstack([self.seqs, [integer_encode(record, rcomp=True) for record in records]])
-            self.senses = np.concatenate([self.senses, [sense_complement_dict[sense]]*len(records)])
-        if rcomp == 'both':    
+        if rcomp == 'none':
+            self.seqs = np.stack([one_hot_encode(seq) for seq in records], 0)
+            self.senses = np.array([sense]*len(records))
+        if rcomp == 'only':
+            self.seqs = np.stack([one_hot_encode(seq, rc=True) for seq in records], 0)
+            self.senses = np.array([sense_complement_dict[sense]]*len(records))
+        if rcomp == 'both':
+            self.seqs = np.stack(
+                [one_hot_encode(seq) for seq in records] +
+                [one_hot_encode(seq, rc=True) for seq in records],
+                0)
+            self.senses = np.concatenate([
+                [sense]*len(records),
+                [sense_complement_dict[sense]]*len(records)
+            ])
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
     def check_equal_lens(self, records):
@@ -103,6 +130,8 @@ class SeqEncoding:
             lens = np.unique([len(record.seq) for record in records])
             if len(lens) != 1:
                 raise ValueError("Cannot encode - sequences have unequal length!")
+
+
 
     
 class SeqGroups:

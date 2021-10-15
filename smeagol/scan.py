@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import itertools
 
-from .encode import SeqGroups, one_hot_dict
+from .encode import SeqGroups, one_hot_dict, one_hot_encode
 
 
 def score_site(pwm, seq, position_wise=False):
@@ -15,7 +15,7 @@ def score_site(pwm, seq, position_wise=False):
         score (float): PWM score
     
     """
-    seq = np.vstack(np.array([one_hot_dict[base] for base in seq], dtype='float32'))
+    seq = one_hot_encode(seq, rc=False)
     assert seq.shape == pwm.shape
     position_wise_scores = np.sum(np.multiply(seq, pwm), axis=1)
     if position_wise:
