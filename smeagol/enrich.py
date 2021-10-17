@@ -72,7 +72,7 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', records
     return enr_full
 
 
-def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, background='binomial', verbose=False, combine_seqs=True, seq_batch=0):
+def enrich_in_genome(records, model, simN, simK, rcomp, threshold, sense='+', background='binomial', verbose=False, combine_seqs=True, seq_batch=0):
     """Function to shuffle sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
         
     Args:
@@ -115,7 +115,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, sense, threshold, backgr
     return results
 
 
-def examine_thresholds(records, model, simN, simK, rcomp, sense, min_threshold, verbose=False, combine_seqs=True):
+def examine_thresholds(records, model, simN, simK, rcomp, min_threshold, sense='+', verbose=False, combine_seqs=True):
     """Function to compare the number of binding sites at various thresholds.
             
     Args:

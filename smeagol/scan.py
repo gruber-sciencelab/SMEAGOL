@@ -226,7 +226,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
     return output
 
 
-def scan_sequences(seqs, model, threshold, sense, rcomp='none', outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False, seq_batch=0):
+def scan_sequences(seqs, model, threshold, sense='+', rcomp='none', outputs=['sites'], score=False, group_by=None, combine_seqs=False, sep_ids=False, seq_batch=0):
     """Encode given sequences and predict binding sites on them.
     
     Args:

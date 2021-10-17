@@ -15,20 +15,26 @@ def test_PWMModel():
     y = df.weights[1]
     z = df.weights[2]
     model = PWMModel(df)
+    # Check variables
     assert np.all(model.Matrix_ids == ['x', 'y', 'z'])
     assert np.all(model.widths == [3, 5, 3])
     assert equals(model.max_scores, np.array([3.33376361, 5.52770673, 2.50816981]))
     assert model.channels == 3
     assert model.max_width == 5
+    # Check layers
     assert np.all([str(type(x)) for x in model.model.layers] == ["<class 'tensorflow.python.keras.engine.input_layer.InputLayer'>",
      "<class 'tensorflow.python.keras.layers.convolutional.ZeroPadding1D'>",
+     "<class 'tensorflow.python.keras.layers.embeddings.Embedding'>",
      "<class 'tensorflow.python.keras.layers.core.Reshape'>",
      "<class 'tensorflow.python.keras.layers.convolutional.Conv1D'>"])
-    assert np.all(model.model.layers[3].weights[0].shape == (5, 4, 3))
-    assert equals(np.array(model.model.layers[3].weights[0][:, :, 0]), np.pad(x, ((0, 2),(0, 0))))
-    assert equals(np.array(model.model.layers[3].weights[0][:, :, 1]), y)
-    assert equals(np.array(model.model.layers[3].weights[0][:, :, 2]), np.pad(z, ((0, 2),(0, 0))))
-    encoded_seq = np.stack([one_hot_encode('ACG')], 0)
+    # Check weights
+    assert equals(np.array(model.model.layers[2].weights[0]), np.array(list(one_hot_dict.values())))
+    assert np.all(model.model.layers[4].weights[0].shape == (5, 4, 3))
+    assert equals(np.array(model.model.layers[4].weights[0][:, :, 0]), np.pad(x, ((0, 2),(0, 0))))
+    assert equals(np.array(model.model.layers[4].weights[0][:, :, 1]), y)
+    assert equals(np.array(model.model.layers[4].weights[0][:, :, 2]), np.pad(z, ((0, 2),(0, 0))))
+    # Test prediction
+    encoded_seq = np.array([[1, 2, 3]])
     preds = model.predict(encoded_seq)
     assert preds.shape == (1, 3, 3)
     assert equals(preds[0, 0, :], np.array([-1.60847875, -7.32647115, 0.35611725000000005]))

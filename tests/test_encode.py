@@ -6,7 +6,21 @@ script_dir = os.path.dirname(__file__)
 rel_path = "data"
 data_path = os.path.join(script_dir, rel_path)
 
-    
+
+def test_integer_encode():
+    record = SeqRecord(Seq('ACGTNWSMKRYBDHVZ'), id='id', name='name')
+    result = integer_encode(record, rc=False)
+    assert np.all(result == [1,2,3,4,6,7,8,9,10,11,12,13,14,15,16,0])
+    record = SeqRecord(Seq('ACGE'))
+    with pytest.raises(KeyError):
+        integer_encode(record, rc='none')
+    record = SeqRecord(Seq('AGCAU'))
+    result = integer_encode(record, rc=True)
+    assert np.all(result == [1, 5, 3, 2, 5])
+
+
+
+
 def test_SeqEncoding():
     records = [SeqRecord(Seq('AGC'), id='id1', name='name1'),
                SeqRecord(Seq('ACA'), id='id2', name='name2')]
@@ -14,15 +28,7 @@ def test_SeqEncoding():
     assert result.len == 3
     assert np.all(result.ids == ['id1', 'id2'])
     assert np.all(result.names == ['name1', 'name2'])
-    assert np.all(result.seqs == np.array(
-        [[[1., 0., 0., 0.],
-          [0., 0., 1., 0.],
-          [0., 1., 0., 0.]],
-
-        [[1., 0., 0., 0.],
-         [0., 1., 0., 0.],
-         [1., 0., 0., 0.]]]))
-                  
+    assert np.all(result.seqs == np.array([[1,3,2], [1,2,1]]))           
     assert np.all(result.senses == ['+', '+'])
     assert type(result.senses) == np.ndarray
     assert type(result.ids) == np.ndarray
@@ -31,35 +37,12 @@ def test_SeqEncoding():
     result = SeqEncoding(records, sense='+', rcomp='only')
     assert np.all(result.ids == ['id1', 'id2'])
     assert np.all(result.names == ['name1', 'name2'])
-    assert np.all(result.seqs == np.array(
-        [[[0., 0., 1., 0.],
-          [0., 1., 0., 0.],
-          [0., 0., 0., 1.]],
-
-        [[0., 0., 0., 1.],
-         [0., 0., 1., 0.],
-         [0., 0., 0., 1.]]]))
+    assert np.all(result.seqs == np.array([[3,2,4], [4,3,4]]))
     assert np.all(result.senses == ['-', '-'])
     result = SeqEncoding(records, sense='+', rcomp='both')
     assert np.all(result.ids == ['id1', 'id2', 'id1', 'id2'])
     assert np.all(result.names == ['name1', 'name2', 'name1', 'name2'])
-    assert np.all(result.seqs == np.array(
-       [[[1., 0., 0., 0.],
-         [0., 0., 1., 0.],
-         [0., 1., 0., 0.]],
-
-        [[1., 0., 0., 0.],
-         [0., 1., 0., 0.],
-         [1., 0., 0., 0.]],
-
-        [[0., 0., 1., 0.],
-         [0., 1., 0., 0.],
-         [0., 0., 0., 1.]],
-
-        [[0., 0., 0., 1.],
-         [0., 0., 1., 0.],
-         [0., 0., 0., 1.]]]))
-
+    assert np.all(result.seqs == np.array([[1,3,2], [1,2,1], [3,2,4], [4,3,4]]))
     assert np.all(result.senses == ['+', '+', '-', '-'])
 
     

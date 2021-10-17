@@ -40,6 +40,8 @@ sense_complement_dict = {
 }
 
 bases = list(one_hot_dict.keys())
+base_one_hot = list(one_hot_dict.values())
+
 integer_encoding_dict = {}
 for i, base in enumerate(bases):
     integer_encoding_dict[base] = i
@@ -51,7 +53,7 @@ def integer_encode(seq, rc=False):
     """Function to integer encode a DNA sequence.
     
     Args:
-      seq (str or Seq): sequence
+      seq (str, Seq or SeqRecord): sequence
       rc (bool): reverse complement the sequence before encoding
     
     Returns:
@@ -109,16 +111,16 @@ class SeqEncoding:
         self.senses = []
         assert rcomp in ['none', 'both', 'only'], "rcomp should be 'none', 'only' or 'both'."
         if rcomp == 'none':
-            self.seqs = np.stack([one_hot_encode(seq) for seq in records], 0)
+            self.seqs = np.vstack([integer_encode(record, rc=False) for record in records])
             self.senses = np.array([sense]*len(records))
         if rcomp == 'only':
-            self.seqs = np.stack([one_hot_encode(seq, rc=True) for seq in records], 0)
+            self.seqs = np.vstack([integer_encode(record, rc=True) for record in records])
             self.senses = np.array([sense_complement_dict[sense]]*len(records))
         if rcomp == 'both':
-            self.seqs = np.stack(
-                [one_hot_encode(seq) for seq in records] +
-                [one_hot_encode(seq, rc=True) for seq in records],
-                0)
+            self.seqs = np.vstack(
+                [[integer_encode(record, rc=False) for record in records],
+                [integer_encode(record, rc=True) for record in records]]
+            )
             self.senses = np.concatenate([
                 [sense]*len(records),
                 [sense_complement_dict[sense]]*len(records)
