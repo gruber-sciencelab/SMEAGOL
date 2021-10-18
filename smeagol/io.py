@@ -242,3 +242,109 @@ def download_rbpdb(species='human'):
         print("Done")
     else:
         print(f"Folder {download_dir} already exists.")
+        
+        
+def load_rbpdb(species='human', matrix_type='PWM'):
+    """Function to load all motifs and metadata from RBPDB as a pandas DF.
+       Downloads version 1.3.1.
+       
+    Args:
+        species (str): 'human', 'mouse', 'fly' or 'worm'.
+        
+    Returns:
+        df (pandas df): contains matrices
+    
+    """
+    # Download
+    download_rbpdb(species='human')
+    
+    # Set paths
+    download_dir = os.path.join('motifs/rbpdb/', species)
+    if matrix_type == 'PWM':
+        mat_dir = os.path.join(download_dir, 'PWMDir')
+    elif matrix_type == 'PFM':
+        mat_dir = os.path.join(download_dir, 'PFMDir')
+    else:
+        raise ValueError('matrix_type must be PFM or PWM.')
+        
+    # Read matrices
+    df = read_pms_from_dir(mat_dir, matrix_type=matrix_type, transpose=True)
+    
+    # Read metadata
+    rbp = pd.read_csv(os.path.join(download_dir, 
+            'RBPDB_v1.3.1_proteins_' + species + '_2012-11-21.tdt'), 
+            header=None,  sep="\t", usecols=(0,4), names=('Prot_id', 'Gene_name'),
+                 dtype='str')
+    rbp_pwm = pd.read_csv(os.path.join(download_dir, 'RBPDB_v1.3.1_protExp_' + species + '_2012-11-21.tdt'), 
+            header=None,  sep="\t", usecols=(0,1), names=('Prot_id', 'Matrix_id'),
+                 dtype='str')
+
+    # Merge
+    rbp = rbp.merge(rbp_pwm, on='Prot_id')[['Matrix_id', 'Gene_name']]
+    df = df.merge(rbp, on='Matrix_id')
+    
+    return df
+
+
+def download_attract():
+    """Function to download all motifs and metadata from ATtRACT.
+        
+    Returns:
+        Motifs are downloaded into the 'motifs/attract' directory.
+    
+    """
+    download_dir = 'motifs/attract'
+    remote_path = 'https://attract.cnic.es/attract/static/ATtRACT.zip'
+    local_path = os.path.join(download_dir, 'ATtRACT.zip')
+    print(f"Downloading ATtRACT db into {download_dir}")
+    if not os.path.exists(download_dir):
+        os.mkdir(download_dir)
+        os.system('wget  -P ' +  download_dir + ' ' + remote_path)
+        os.system('unzip ' + local_path + ' -d ' + download_dir)
+        
+        
+def load_attract():
+    """Function to load all motifs and metadata from ATtRACT as a pandas DF.
+        
+    Returns:
+        df (pandas df): contains matrices
+    
+    """
+    download_attract()
+    download_dir = 'motifs/attract'
+    df = pd.read_csv(os.path.join(download_dir, 'ATtRACT_db.txt'), sep="\t")
+    ppms = read_pms_from_file(os.path.join(download_dir, 'pwm.txt'), check_lens=True)
+    df = df.merge(ppms, on='Matrix_id')
+    return df
+
+
+def download_PWM_dataset(dataset='representative'):
+    """Function to download motifs used in the paper.
+        
+    Returns:
+        df (pandas df): contains matrices
+    
+    """
+    download_dir = os.path.join('motifs/smeagol_datasets', dataset)
+    if dataset == 'full':
+        return None
+    elif dataset == 'representative':
+        return None
+
+
+def load_PWM_dataset(dataset='representative'):
+    """Function to load motifs used in the paper as a pandas DF.
+        
+    Returns:
+        df (pandas df): contains matrices
+    
+    """
+    download_PWM_dataset(dataset=dataset)
+    download_dir = os.path.join('motifs/smeagol_datasets', dataset)
+    # df = pd.read_hdf(os.path.join(download_dir, 'pwms.hdf5'), 'data')
+    return None
+
+    
+
+
+
