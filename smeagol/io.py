@@ -301,8 +301,10 @@ def download_attract():
         os.mkdir(download_dir)
         os.system('wget  -P ' +  download_dir + ' ' + remote_path)
         os.system('unzip ' + local_path + ' -d ' + download_dir)
-        
-        
+    else:
+        print(f"Folder {download_dir} already exists.")
+
+
 def load_attract():
     """Function to load all motifs and metadata from ATtRACT as a pandas DF.
         
@@ -318,31 +320,44 @@ def load_attract():
     return df
 
 
-def download_PWM_dataset(dataset='representative'):
+def download_smeagol_PWMset():
     """Function to download motifs used in the paper.
         
     Returns:
         df (pandas df): contains matrices
     
     """
-    download_dir = os.path.join('motifs/smeagol_datasets', dataset)
-    if dataset == 'full':
-        return None
-    elif dataset == 'representative':
-        return None
+    download_dir = 'motifs/smeagol_datasets'
+    remote_paths = ['https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/tree/master/DATA/PWMs/attract_rbpdb_encode_filtered_human_pwms.h5',
+                    'https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/tree/master/DATA/PWMs/attract_rbpdb_encode_representative_matrices.txt']
+    print(f"Downloading custom PWM set into {download_dir}")
+    if not os.path.exists(download_dir):
+        os.mkdir(download_dir)
+        for remote_path in remote_paths:
+            os.system('wget  -P ' +  download_dir + ' ' + remote_path)
+    else:
+        print(f"Folder {download_dir} already exists.")
 
 
-def load_PWM_dataset(dataset='representative'):
+def load_smeagol_PWMset(dataset='representative'):
     """Function to load motifs used in the paper as a pandas DF.
-        
+    
+    Args:
+        dataset: 'full' or 'representative'.
+
     Returns:
         df (pandas df): contains matrices
     
     """
-    download_PWM_dataset(dataset=dataset)
-    download_dir = os.path.join('motifs/smeagol_datasets', dataset)
-    # df = pd.read_hdf(os.path.join(download_dir, 'pwms.hdf5'), 'data')
-    return None
+    download_smeagol_PWMset()
+    download_dir = 'motifs/smeagol_datasets'
+    h5_path = os.path.join(download_dir, 'attract_rbpdb_encode_filtered_human_pwms.h5')
+    reps_path = os.path.join(download_dir, 'attract_rbpdb_encode_representative_matrices.txt') 
+    df = pd.read_hdf(h5_path, 'data')
+    if dataset == 'representative':
+        reps = [x.strip() for x in open(reps_path)]
+        df = df[df.Matrix_id.isin(reps)]
+    return df
 
     
 
