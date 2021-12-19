@@ -17,7 +17,8 @@ model = PWMModel(df)
 
 
 def test_enrich_in_genome():
-    enrichment_results = enrich_in_genome(genome, model, 10, 2, 'both', '+', 0.65, background='binomial')
+    enrichment_results = enrich_in_genome(genome, model, simN=10, simK=2, rcomp='both',
+                                          sense='+', threshold=0.65, background='binomial')
     sites = enrichment_results['real_sites']
     expected = pd.read_csv('tests/data/real_sites.csv')
     assert np.all(sites.start == expected.start - 1)
