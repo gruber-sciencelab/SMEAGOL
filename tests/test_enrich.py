@@ -17,25 +17,30 @@ model = PWMModel(df)
 
 
 def test_enrich_in_genome():
+    # Perform enrichment analysis
     enrichment_results = enrich_in_genome(genome, model, simN=10, simK=2, rcomp='both',
                                           sense='+', threshold=0.65, background='binomial')
+    # Test sites
     sites = enrichment_results['real_sites']
-    expected = pd.read_csv('tests/data/real_sites.csv')
+    expected = pd.read_csv(os.path.join(data_path, 'real_sites.csv'))
     assert np.all(sites.start == expected.start - 1)
     assert np.all(sites.sense == expected.sense)
+    # Test counts
     counts = enrichment_results['real_counts']
-    expected = pd.read_csv('tests/data/real_counts.csv')
+    expected = pd.read_csv(os.path.join(data_path, 'real_counts.csv'))
     assert np.all(counts.Matrix_id == expected.Matrix_id)
     assert np.all(counts.sense == expected.sense)
     assert np.all(counts.num == expected.num)
+    # Test stats
     stats = enrichment_results['shuf_stats']
-    expected = pd.read_csv('tests/data/shuf_stats.csv')
+    expected = pd.read_csv(os.path.join(data_path, 'shuf_stats.csv'))
     assert np.all(stats.Matrix_id == expected.Matrix_id)
     assert np.all(stats.sense == expected.sense)
     assert np.all(stats.avg == expected.avg)
     assert np.all([equals(stats.sd[i], expected.sd[i]) for i in range(len(stats))])
+    # Test enrichment
     enr = enrichment_results['enrichment']
-    expected = pd.read_csv('tests/data/enr.csv')
+    expected = pd.read_csv(os.path.join(data_path, 'enr.csv'))
     assert np.all(enr.Matrix_id == expected.Matrix_id)
     assert np.all(enr.sense == expected.sense)
     assert np.all([equals(enr.p[i], expected.p[i]) for i in range(len(enr))])
