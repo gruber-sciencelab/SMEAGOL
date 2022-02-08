@@ -222,10 +222,8 @@ def download_rbpdb(species='human'):
     """
     download_dir = os.path.join('motifs/rbpdb', species)
     print(f"Downloading RBPDB version 1.3.1 for species {species} into {download_dir}")
-    if not os.path.exists('motifs/rbpdb'):
-        os.mkdir('motifs/rbpdb')
     if not os.path.exists(download_dir):
-        os.mkdir(download_dir)
+        os.makedirs(download_dir)
         meta_file = 'RBPDB_v1.3.1_' + species + '_2012-11-21_TDT'
         mat_file = 'matrices_' + species
         url = 'http://rbpdb.ccbr.utoronto.ca/downloads'
