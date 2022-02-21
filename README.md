@@ -8,7 +8,7 @@ It is recommended to install in a conda environment or virtualenv. SMEAGOL is co
 
 If you have conda installed on your machine you can create a novel virtual environment like this:
 ```
-conda create --name SMEAGOL python=3.7
+conda create --name SMEAGOL python=3.7.1
 ```
 
 After the installation was successful, you need to activate the created virtual environment before you can install SMEAGOL into it, which can be done as follows:
