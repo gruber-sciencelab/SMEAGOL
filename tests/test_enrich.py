@@ -19,7 +19,8 @@ model = PWMModel(df)
 def test_enrich_in_genome():
     # Perform enrichment analysis
     enrichment_results = enrich_in_genome(genome, model, simN=10, simK=2, rcomp='both',
-                                          sense='+', threshold=0.65, background='binomial')
+                                          sense='+', threshold=0.65, background='binomial',
+                                          shuf_seqs=os.path.join(data_path, 'shuf_genome.fa.gz'))
     # Test sites
     sites = enrichment_results['real_sites']
     expected = pd.read_csv(os.path.join(data_path, 'real_sites.csv'))

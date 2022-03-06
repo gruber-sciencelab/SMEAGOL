@@ -8,7 +8,7 @@ import scipy.stats as stats
 import statsmodels.stats.multitest as multitest
 
 # Smeagol imports
-from .utils import shuffle_records
+from .utils import shuffle_records, read_bg_seqs
 from .encode import SeqGroups
 from .scan import scan_sequences, get_tiling_windows_over_genome, count_in_sliding_windows, count_in_window
 
@@ -72,7 +72,7 @@ def enrich_over_shuffled(real_counts, shuf_stats, background='binomial', records
     return enr_full
 
 
-def enrich_in_genome(records, model, simN, simK, rcomp, threshold, sense='+', background='binomial', verbose=False, combine_seqs=True, seq_batch=0):
+def enrich_in_genome(records, model, simN, simK, rcomp, threshold, sense='+', background='binomial', verbose=False, combine_seqs=True, seq_batch=0, shuf_seqs=None):
     """Function to shuffle sequence(s) and calculate enrichment of PWMs in sequence(s) relative to the shuffled background.
         
     Args:
@@ -86,6 +86,7 @@ def enrich_in_genome(records, model, simN, simK, rcomp, threshold, sense='+', ba
         background (str): 'binomial' or 'normal'
         combine_seqs (bool): combine outputs for all sequence groups into single dataframe
         seq_batch (int): number of shuffled sequences to scan at a time. If 0, scan all.
+        shuf_seqs (str/list): path to FASTA file or list of seqrecord objects containing shuffled sequences
         
     Returns:
         results (dict): dictionary containing results.  
@@ -95,7 +96,13 @@ def enrich_in_genome(records, model, simN, simK, rcomp, threshold, sense='+', ba
     real_preds = scan_sequences(records, model, threshold, sense, rcomp, outputs=['sites', 'counts'], score=False, combine_seqs=combine_seqs)
 
     # Shuffle genome
-    shuf = shuffle_records(records, simN, simK)
+    if shuf_seqs is not None:
+        if type(shuf_seqs) == str:
+            shuf = read_bg_seqs(shuf_seqs, records, simN)
+        elif type(shuf_seqs) == list:
+            shuf = shuf_seqs    
+    else:
+        shuf = shuffle_records(records, simN, simK)
     
     # Count sites on shuffled genomes
     shuf_preds = scan_sequences(shuf, model, threshold, sense, rcomp, outputs=['counts', 'stats'], group_by='name', combine_seqs=combine_seqs, sep_ids=True, seq_batch=seq_batch)
