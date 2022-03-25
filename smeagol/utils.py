@@ -6,7 +6,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 # Smeagol imports
-from smeagol.io import write_fasta
+from smeagol.io import read_fasta, write_fasta
 
 
 def equals(x, y, eps=1e-4):
@@ -83,3 +83,31 @@ def get_Seq(seq):
         return seq
     else:
         raise TypeError('Input sequence must be a string, Seqrecord or Seq object.')
+        
+        
+def read_bg_seqs(file, records, simN):
+    """Function to read background sequences from FASTA file.
+    
+    Args:
+        file (str): Path to fasta (or fasta.gz) file
+        records (list): Original un-shuffled records
+        simN (int): Number of shuffles
+        
+    Returns:
+        list of seqrecord objects
+    
+    """
+    # Read background sequences
+    bg = read_fasta(file)
+    # Check number of sequences
+    assert len(bg) == len(records) * simN
+    # Check sequence length and fix name
+    for i, bg_record in enumerate(bg):
+        matching_record = records[i // simN]
+        assert len (bg_record) == len(matching_record), "length of shuffled sequence does not match original sequence."
+        bg_record.name = matching_record.name
+    return bg
+    
+    
+        
+    

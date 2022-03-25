@@ -1,9 +1,13 @@
+import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Conv1D, Input, Concatenate, Embedding, Reshape, ZeroPadding1D
 from .encode import one_hot_dict, base_one_hot, integer_encode
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 # Define convolutional model
 

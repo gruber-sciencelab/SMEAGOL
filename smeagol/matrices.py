@@ -10,7 +10,7 @@ from sklearn.cluster import AgglomerativeClustering
 
 # Functions to check matrices
 
-def check_ppm(probs, warn=False, eps=1e-3):
+def check_ppm(probs, warn=False, eps=1e-2):
     """Function to check validity of a PPM.
 
     Args:
