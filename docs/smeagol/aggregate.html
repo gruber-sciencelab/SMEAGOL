@@ -40,7 +40,7 @@ def collect_data(file_pattern,
         col_to_collect (str): column to collect
         
     Returns:
-        df_all (pandas DataFrame): concatenated dataframe from all files matching pattern.
+        df_all (pandas DataFrame): A concatenated dataframe containing the `col_to_collect` column from all files matching the pattern `file_pattern`.
     &#34;&#34;&#34;
     
     file_list = sorted(glob.glob(file_pattern))
@@ -82,7 +82,7 @@ def collect_data(file_pattern,
 <dd>column to collect</dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>df_all (pandas DataFrame): concatenated dataframe from all files matching pattern.</p></div>
+<p>df_all (pandas DataFrame): A concatenated dataframe containing the <code>col_to_collect</code> column from all files matching the pattern <code>file_pattern</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -98,7 +98,7 @@ def collect_data(file_pattern,
         col_to_collect (str): column to collect
         
     Returns:
-        df_all (pandas DataFrame): concatenated dataframe from all files matching pattern.
+        df_all (pandas DataFrame): A concatenated dataframe containing the `col_to_collect` column from all files matching the pattern `file_pattern`.
     &#34;&#34;&#34;
     
     file_list = sorted(glob.glob(file_pattern))

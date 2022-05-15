@@ -78,14 +78,14 @@ for i, base in enumerate(bases):
 # Sequence encoding
 
 def integer_encode(seq, rc=False):
-    &#34;&#34;&#34;Function to integer encode a DNA sequence.
+    &#34;&#34;&#34;Function to encode a nucleic acid sequence as a sequence of integers.
     
     Args:
-      seq (str, Seq or SeqRecord): sequence
-      rc (bool): reverse complement the sequence before encoding
+      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
-      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): Numpy array containing the integer encoded sequence. The shape is (L, ) where L is the length of the sequence.
     
     &#34;&#34;&#34;
     # Convert to Seq object
@@ -99,14 +99,14 @@ def integer_encode(seq, rc=False):
 
 
 def one_hot_encode(seq, rc=False):
-    &#34;&#34;&#34;Function to one-hot encode a DNA sequence.
+    &#34;&#34;&#34;Function to one-hot encode a nucleic acid sequence.
     
     Args:
-      seq: sequence of length L
-      rc (bool): reverse complement the sequence before encoding
+      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
-      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): Numpy array containing the one-hot encoded sequence. The shape is (L, 4) where L is the length of the sequence.
     
     &#34;&#34;&#34;
     # Reverse complement
@@ -119,16 +119,32 @@ def one_hot_encode(seq, rc=False):
     
 
 class SeqEncoding:
-    &#34;&#34;&#34;Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
+    &#34;&#34;&#34;This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.
     
     Args:
-        records (list / str): list of strings/Seq/Seqrecord objects or FASTA file
+        records (list / str): A list of strings/Seq/Seqrecord objects, or a path to a FASTA file containing sequences.
       
     Raises:
         ValueError: if sequences have unequal length.
+        
+    Attributes:
+        len (int): Length of the sequences
+        ids (np.array): Numpy array containing the IDs of all sequences.
+        names (np.array):Numpy array containing the names of all sequences.
+        seqs (np.array): Numpy array containing the integer encoded sequences.
+        senses (np.array): Numpy array containing the senses (&#39;+&#39; or &#39;-&#39;) of all sequences.
+        
+    Methods:
+        check_equal_lens (records): checks that all sequences have the same length. 
     
     &#34;&#34;&#34;
     def __init__(self, records, rcomp=&#39;none&#39;, sense=None):
+        &#34;&#34;&#34;
+        Args:
+            records (str or SeqRecord): Either a SeqRecord object or the path to a fasta file containing sequences.
+            rcomp (str): Either &#39;none&#39;, &#39;both&#39;, or &#39;only&#39;. If &#39;none&#39;, only the supplied sequences are stored. If &#39;both&#39;, both the original sequences and their reverse complement sequences are stored. If &#39;only&#39;, only the reverse complement sequences are stored.
+            sense (str): Sense of the input sequences in records. Either &#39;+&#39; or &#39;-&#39;.
+        &#34;&#34;&#34;
         if type(records) == &#39;str&#39;:
             records = read_fasta(records)
         self.check_equal_lens(records)
@@ -156,11 +172,19 @@ class SeqEncoding:
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
     def check_equal_lens(self, records):
+        &#34;&#34;&#34;
+        Checks that all sequences have the same length.
+        
+        Args:
+            records (SeqRecord): SeqRecord object
+            
+        Raises:
+            ValueError: if sequences have unequal length.
+        &#34;&#34;&#34;
         if len(records) &gt; 1:
             lens = np.unique([len(record.seq) for record in records])
             if len(lens) != 1:
                 raise ValueError(&#34;Cannot encode - sequences have unequal length!&#34;)
-
 
 
     
@@ -202,29 +226,29 @@ class SeqGroups:
 <span>def <span class="ident">integer_encode</span></span>(<span>seq, rc=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to integer encode a DNA sequence.</p>
+<div class="desc"><p>Function to encode a nucleic acid sequence as a sequence of integers.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>seq</code></strong> :&ensp;<code>str, Seq</code> or <code>SeqRecord</code></dt>
-<dd>sequence</dd>
+<dt><strong><code>seq</code></strong> :&ensp;<code>str, Seq</code> or <code>SeqRecord object</code></dt>
+<dd>nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.</dd>
 <dt><strong><code>rc</code></strong> :&ensp;<code>bool</code></dt>
-<dd>reverse complement the sequence before encoding</dd>
+<dd>If True, reverse complement the sequence before encoding</dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>result (np.array): array containing integer encoded sequence. Shape (1, L, 1)</p></div>
+<p>result (np.array): Numpy array containing the integer encoded sequence. The shape is (L, ) where L is the length of the sequence.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def integer_encode(seq, rc=False):
-    &#34;&#34;&#34;Function to integer encode a DNA sequence.
+    &#34;&#34;&#34;Function to encode a nucleic acid sequence as a sequence of integers.
     
     Args:
-      seq (str, Seq or SeqRecord): sequence
-      rc (bool): reverse complement the sequence before encoding
+      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
-      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): Numpy array containing the integer encoded sequence. The shape is (L, ) where L is the length of the sequence.
     
     &#34;&#34;&#34;
     # Convert to Seq object
@@ -241,29 +265,29 @@ class SeqGroups:
 <span>def <span class="ident">one_hot_encode</span></span>(<span>seq, rc=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to one-hot encode a DNA sequence.</p>
+<div class="desc"><p>Function to one-hot encode a nucleic acid sequence.</p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>seq</code></strong></dt>
-<dd>sequence of length L</dd>
+<dt><strong><code>seq</code></strong> :&ensp;<code>str, Seq</code> or <code>SeqRecord object</code></dt>
+<dd>nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.</dd>
 <dt><strong><code>rc</code></strong> :&ensp;<code>bool</code></dt>
-<dd>reverse complement the sequence before encoding</dd>
+<dd>If True, reverse complement the sequence before encoding</dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>result (np.array): array containing integer encoded sequence. Shape (1, L, 1)</p></div>
+<p>result (np.array): Numpy array containing the one-hot encoded sequence. The shape is (L, 4) where L is the length of the sequence.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def one_hot_encode(seq, rc=False):
-    &#34;&#34;&#34;Function to one-hot encode a DNA sequence.
+    &#34;&#34;&#34;Function to one-hot encode a nucleic acid sequence.
     
     Args:
-      seq: sequence of length L
-      rc (bool): reverse complement the sequence before encoding
+      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
-      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): Numpy array containing the one-hot encoded sequence. The shape is (L, 4) where L is the length of the sequence.
     
     &#34;&#34;&#34;
     # Reverse complement
@@ -284,29 +308,68 @@ class SeqGroups:
 <span>(</span><span>records, rcomp='none', sense=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.</p>
+<div class="desc"><p>This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.</p>
 <h2 id="args">Args</h2>
-<p>records (list / str): list of strings/Seq/Seqrecord objects or FASTA file</p>
+<p>records (list / str): A list of strings/Seq/Seqrecord objects, or a path to a FASTA file containing sequences.</p>
 <h2 id="raises">Raises</h2>
 <dl>
 <dt><code>ValueError</code></dt>
 <dd>if sequences have unequal length.</dd>
+</dl>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>len</code></strong> :&ensp;<code>int</code></dt>
+<dd>Length of the sequences</dd>
+<dt><strong><code>ids</code></strong> :&ensp;<code>np.array</code></dt>
+<dd>Numpy array containing the IDs of all sequences.</dd>
+<dt>names (np.array):Numpy array containing the names of all sequences.</dt>
+<dt><strong><code>seqs</code></strong> :&ensp;<code>np.array</code></dt>
+<dd>Numpy array containing the integer encoded sequences.</dd>
+<dt><strong><code>senses</code></strong> :&ensp;<code>np.array</code></dt>
+<dd>Numpy array containing the senses ('+' or '-') of all sequences.</dd>
+</dl>
+<h2 id="methods">Methods</h2>
+<p>check_equal_lens (records): checks that all sequences have the same length. </p>
+<h2 id="args_1">Args</h2>
+<dl>
+<dt><strong><code>records</code></strong> :&ensp;<code>str</code> or <code>SeqRecord</code></dt>
+<dd>Either a SeqRecord object or the path to a fasta file containing sequences.</dd>
+<dt><strong><code>rcomp</code></strong> :&ensp;<code>str</code></dt>
+<dd>Either 'none', 'both', or 'only'. If 'none', only the supplied sequences are stored. If 'both', both the original sequences and their reverse complement sequences are stored. If 'only', only the reverse complement sequences are stored.</dd>
+<dt><strong><code>sense</code></strong> :&ensp;<code>str</code></dt>
+<dd>Sense of the input sequences in records. Either '+' or '-'.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class SeqEncoding:
-    &#34;&#34;&#34;Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
+    &#34;&#34;&#34;This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.
     
     Args:
-        records (list / str): list of strings/Seq/Seqrecord objects or FASTA file
+        records (list / str): A list of strings/Seq/Seqrecord objects, or a path to a FASTA file containing sequences.
       
     Raises:
         ValueError: if sequences have unequal length.
+        
+    Attributes:
+        len (int): Length of the sequences
+        ids (np.array): Numpy array containing the IDs of all sequences.
+        names (np.array):Numpy array containing the names of all sequences.
+        seqs (np.array): Numpy array containing the integer encoded sequences.
+        senses (np.array): Numpy array containing the senses (&#39;+&#39; or &#39;-&#39;) of all sequences.
+        
+    Methods:
+        check_equal_lens (records): checks that all sequences have the same length. 
     
     &#34;&#34;&#34;
     def __init__(self, records, rcomp=&#39;none&#39;, sense=None):
+        &#34;&#34;&#34;
+        Args:
+            records (str or SeqRecord): Either a SeqRecord object or the path to a fasta file containing sequences.
+            rcomp (str): Either &#39;none&#39;, &#39;both&#39;, or &#39;only&#39;. If &#39;none&#39;, only the supplied sequences are stored. If &#39;both&#39;, both the original sequences and their reverse complement sequences are stored. If &#39;only&#39;, only the reverse complement sequences are stored.
+            sense (str): Sense of the input sequences in records. Either &#39;+&#39; or &#39;-&#39;.
+        &#34;&#34;&#34;
         if type(records) == &#39;str&#39;:
             records = read_fasta(records)
         self.check_equal_lens(records)
@@ -334,6 +397,15 @@ class SeqGroups:
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
     def check_equal_lens(self, records):
+        &#34;&#34;&#34;
+        Checks that all sequences have the same length.
+        
+        Args:
+            records (SeqRecord): SeqRecord object
+            
+        Raises:
+            ValueError: if sequences have unequal length.
+        &#34;&#34;&#34;
         if len(records) &gt; 1:
             lens = np.unique([len(record.seq) for record in records])
             if len(lens) != 1:
@@ -345,12 +417,31 @@ class SeqGroups:
 <span>def <span class="ident">check_equal_lens</span></span>(<span>self, records)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Checks that all sequences have the same length.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>records</code></strong> :&ensp;<code>SeqRecord</code></dt>
+<dd>SeqRecord object</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>if sequences have unequal length.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def check_equal_lens(self, records):
+    &#34;&#34;&#34;
+    Checks that all sequences have the same length.
+    
+    Args:
+        records (SeqRecord): SeqRecord object
+        
+    Raises:
+        ValueError: if sequences have unequal length.
+    &#34;&#34;&#34;
     if len(records) &gt; 1:
         lens = np.unique([len(record.seq) for record in records])
         if len(lens) != 1:
