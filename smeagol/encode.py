@@ -50,14 +50,14 @@ for i, base in enumerate(bases):
 # Sequence encoding
 
 def integer_encode(seq, rc=False):
-    """Function to integer encode a DNA sequence.
+    """Function to encode a nucleic acid sequence as a sequence of integers.
     
     Args:
-      seq (str, Seq or SeqRecord): sequence
-      rc (bool): reverse complement the sequence before encoding
+      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
-      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): Numpy array containing the integer encoded sequence. The shape is (L, ) where L is the length of the sequence.
     
     """
     # Convert to Seq object
@@ -71,14 +71,14 @@ def integer_encode(seq, rc=False):
 
 
 def one_hot_encode(seq, rc=False):
-    """Function to one-hot encode a DNA sequence.
+    """Function to one-hot encode a nucleic acid sequence.
     
     Args:
-      seq: sequence of length L
-      rc (bool): reverse complement the sequence before encoding
+      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
-      result (np.array): array containing integer encoded sequence. Shape (1, L, 1)
+      result (np.array): Numpy array containing the one-hot encoded sequence. The shape is (L, 4) where L is the length of the sequence.
     
     """
     # Reverse complement
@@ -91,16 +91,26 @@ def one_hot_encode(seq, rc=False):
     
 
 class SeqEncoding:
-    """Encodes a single DNA sequence, or a set of DNA sequences all of which have the same length and sense.
-    
-    Args:
-        records (list / str): list of strings/Seq/Seqrecord objects or FASTA file
-      
-    Raises:
-        ValueError: if sequences have unequal length.
+    """This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.
+            
+    Attributes:
+        len (int): Length of the sequences
+        ids (np.array): Numpy array containing the IDs of all sequences.
+        names (np.array):Numpy array containing the names of all sequences.
+        seqs (np.array): Numpy array containing the integer encoded sequences.
+        senses (np.array): Numpy array containing the senses ('+' or '-') of all sequences.
+        
+    Methods:
+        check_equal_lens (records): checks that all sequences have the same length. 
     
     """
     def __init__(self, records, rcomp='none', sense=None):
+        """
+        Args:
+            records (str or SeqRecord): Either a SeqRecord object or the path to a fasta file containing sequences.
+            rcomp (str): Either 'none', 'both', or 'only'. If 'none', only the supplied sequences are stored. If 'both', both the original sequences and their reverse complement sequences are stored. If 'only', only the reverse complement sequences are stored.
+            sense (str): Sense of the input sequences in records. Either '+' or '-'.
+        """
         if type(records) == 'str':
             records = read_fasta(records)
         self.check_equal_lens(records)
@@ -128,27 +138,36 @@ class SeqEncoding:
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
     def check_equal_lens(self, records):
+        """
+        Checks that all sequences have the same length.
+        
+        Args:
+            records (SeqRecord): SeqRecord object
+            
+        Raises:
+            ValueError: if sequences have unequal length.
+        """
         if len(records) > 1:
             lens = np.unique([len(record.seq) for record in records])
             if len(lens) != 1:
                 raise ValueError("Cannot encode - sequences have unequal length!")
 
 
-
     
 class SeqGroups:
     """Encodes one or more groupings of equal-length sequences. 
-       Sequences in different groupings may have different lengths.
-    
-    Args:
-        records (list / str): list of seqrecord objects or FASTA file
-        rcomp (str): 'only' to encode the sequence reverse complements, 'both' to encode the reverse
-                     complements as well as original sequences, or 'none'.
-        sense (str): sense of sequences, '+' or '-'.
-        group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
-    
+       Sequences in different groupings may have different lengths.    
     """
     def __init__(self, records, rcomp='none', sense=None, group_by=None):
+        """
+        Args:
+            records (list / str): list of seqrecord objects or FASTA file
+            rcomp (str): 'only' to encode the sequence reverse complements, 'both' to encode the reverse
+                     complements as well as original sequences, or 'none'.
+            sense (str): sense of sequences, '+' or '-'.
+             group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
+
+        """
         if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) > 1:
@@ -157,6 +176,9 @@ class SeqGroups:
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
     def group_by(self, records, key):
+        """
+        
+        """
         records_dict = defaultdict(list)
         for record in records:
             records_dict[record.__getattribute__(key)].append(record)

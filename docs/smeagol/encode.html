@@ -120,13 +120,7 @@ def one_hot_encode(seq, rc=False):
 
 class SeqEncoding:
     &#34;&#34;&#34;This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.
-    
-    Args:
-        records (list / str): A list of strings/Seq/Seqrecord objects, or a path to a FASTA file containing sequences.
-      
-    Raises:
-        ValueError: if sequences have unequal length.
-        
+            
     Attributes:
         len (int): Length of the sequences
         ids (np.array): Numpy array containing the IDs of all sequences.
@@ -190,17 +184,18 @@ class SeqEncoding:
     
 class SeqGroups:
     &#34;&#34;&#34;Encodes one or more groupings of equal-length sequences. 
-       Sequences in different groupings may have different lengths.
-    
-    Args:
-        records (list / str): list of seqrecord objects or FASTA file
-        rcomp (str): &#39;only&#39; to encode the sequence reverse complements, &#39;both&#39; to encode the reverse
-                     complements as well as original sequences, or &#39;none&#39;.
-        sense (str): sense of sequences, &#39;+&#39; or &#39;-&#39;.
-        group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
-    
+       Sequences in different groupings may have different lengths.    
     &#34;&#34;&#34;
     def __init__(self, records, rcomp=&#39;none&#39;, sense=None, group_by=None):
+        &#34;&#34;&#34;
+        Args:
+            records (list / str): list of seqrecord objects or FASTA file
+            rcomp (str): &#39;only&#39; to encode the sequence reverse complements, &#39;both&#39; to encode the reverse
+                     complements as well as original sequences, or &#39;none&#39;.
+            sense (str): sense of sequences, &#39;+&#39; or &#39;-&#39;.
+             group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
+
+        &#34;&#34;&#34;
         if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) &gt; 1:
@@ -209,6 +204,9 @@ class SeqGroups:
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
     def group_by(self, records, key):
+        &#34;&#34;&#34;
+        
+        &#34;&#34;&#34;
         records_dict = defaultdict(list)
         for record in records:
             records_dict[record.__getattribute__(key)].append(record)
@@ -309,13 +307,6 @@ class SeqGroups:
 </code></dt>
 <dd>
 <div class="desc"><p>This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.</p>
-<h2 id="args">Args</h2>
-<p>records (list / str): A list of strings/Seq/Seqrecord objects, or a path to a FASTA file containing sequences.</p>
-<h2 id="raises">Raises</h2>
-<dl>
-<dt><code>ValueError</code></dt>
-<dd>if sequences have unequal length.</dd>
-</dl>
 <h2 id="attributes">Attributes</h2>
 <dl>
 <dt><strong><code>len</code></strong> :&ensp;<code>int</code></dt>
@@ -330,7 +321,7 @@ class SeqGroups:
 </dl>
 <h2 id="methods">Methods</h2>
 <p>check_equal_lens (records): checks that all sequences have the same length. </p>
-<h2 id="args_1">Args</h2>
+<h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>records</code></strong> :&ensp;<code>str</code> or <code>SeqRecord</code></dt>
 <dd>Either a SeqRecord object or the path to a fasta file containing sequences.</dd>
@@ -345,13 +336,7 @@ class SeqGroups:
 </summary>
 <pre><code class="python">class SeqEncoding:
     &#34;&#34;&#34;This class encodes a single nucleic acid sequence, or a set of sequences, all of which must have the same length. Genomic sequences used to initialize the class must also have the same sense.
-    
-    Args:
-        records (list / str): A list of strings/Seq/Seqrecord objects, or a path to a FASTA file containing sequences.
-      
-    Raises:
-        ValueError: if sequences have unequal length.
-        
+            
     Attributes:
         len (int): Length of the sequences
         ids (np.array): Numpy array containing the IDs of all sequences.
@@ -456,7 +441,8 @@ class SeqGroups:
 </code></dt>
 <dd>
 <div class="desc"><p>Encodes one or more groupings of equal-length sequences.
-Sequences in different groupings may have different lengths.</p>
+Sequences in different groupings may have different lengths.
+</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt>records (list / str): list of seqrecord objects or FASTA file</dt>
@@ -465,26 +451,26 @@ Sequences in different groupings may have different lengths.</p>
 complements as well as original sequences, or 'none'.</dd>
 <dt><strong><code>sense</code></strong> :&ensp;<code>str</code></dt>
 <dd>sense of sequences, '+' or '-'.</dd>
-<dt><strong><code>group_by</code></strong> :&ensp;<code>str</code></dt>
-<dd>key by which to group sequences. If None, each sequence will be a separate group.</dd>
-</dl></div>
+</dl>
+<p>group_by (str): key by which to group sequences. If None, each sequence will be a separate group.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class SeqGroups:
     &#34;&#34;&#34;Encodes one or more groupings of equal-length sequences. 
-       Sequences in different groupings may have different lengths.
-    
-    Args:
-        records (list / str): list of seqrecord objects or FASTA file
-        rcomp (str): &#39;only&#39; to encode the sequence reverse complements, &#39;both&#39; to encode the reverse
-                     complements as well as original sequences, or &#39;none&#39;.
-        sense (str): sense of sequences, &#39;+&#39; or &#39;-&#39;.
-        group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
-    
+       Sequences in different groupings may have different lengths.    
     &#34;&#34;&#34;
     def __init__(self, records, rcomp=&#39;none&#39;, sense=None, group_by=None):
+        &#34;&#34;&#34;
+        Args:
+            records (list / str): list of seqrecord objects or FASTA file
+            rcomp (str): &#39;only&#39; to encode the sequence reverse complements, &#39;both&#39; to encode the reverse
+                     complements as well as original sequences, or &#39;none&#39;.
+            sense (str): sense of sequences, &#39;+&#39; or &#39;-&#39;.
+             group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
+
+        &#34;&#34;&#34;
         if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) &gt; 1:
@@ -493,6 +479,9 @@ complements as well as original sequences, or 'none'.</dd>
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
     def group_by(self, records, key):
+        &#34;&#34;&#34;
+        
+        &#34;&#34;&#34;
         records_dict = defaultdict(list)
         for record in records:
             records_dict[record.__getattribute__(key)].append(record)
@@ -510,6 +499,9 @@ complements as well as original sequences, or 'none'.</dd>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def group_by(self, records, key):
+    &#34;&#34;&#34;
+    
+    &#34;&#34;&#34;
     records_dict = defaultdict(list)
     for record in records:
         records_dict[record.__getattribute__(key)].append(record)
