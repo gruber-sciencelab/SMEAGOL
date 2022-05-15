@@ -22,6 +22,7 @@ required_packages = [line.strip() for line in open(requirements_path, 'r') if
 setup(name='SMEAGOL',
       version='0.0.1',
       install_requires=required_packages,
+      include_package_data=True,
       packages=['smeagol'],
       python_requires='>=3.7, !=3.9',
       platforms=['any'],
