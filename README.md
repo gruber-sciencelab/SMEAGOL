@@ -1,6 +1,8 @@
 # SMEAGOL (Sequence Motif Enrichment And Genome annOtation Library)
 
-Smeagol is a library to identify and visualize enrichment (or depletion) of motifs in DNA/RNA sequences.
+SMEAGOL is a library to identify and visualize enrichment (or depletion) of sequence motifs in DNA/RNA sequences.
+
+![SMEAGOL](figures/Fig1.png)
 
 ## Setup
 
@@ -41,7 +43,7 @@ cd tests
 pytest
 ```
 
-### 5. Add SMEAGOL kernel to Ipython
+### 5. Add SMEAGOL kernel to Ipython (if running SMEAGOL in Jupyter notebooks)
 ```
 python -m ipykernel install --user --name=SMEAGOL --display-name='Python 3.7 (SMEAGOL)'
 ```
@@ -58,21 +60,26 @@ from smeagol.visualize import plot_background
 
 ## Modules
 
-Smeagol contains the following modules:
+The following sub-modules are included:
 
-- smeagol.matrices: functions to analyze PPMs and PWMs
-- smeagol.io: functions to read and write data
-- smeagol.models: tensorflow encoding of PWMs 
-- smeagol.encode: functions to encode DNA sequences
-- smeagol.scan: functions to score binding sites 
-- smeagol.enrich: functions to calculate binding site enrichment
-- smeagol.variant: functions to predict the effects of sequence variants
-- smeagol.visualize: functions to generate plots
+- smeagol.aggregate: Aggregate results across different genomes.
+- smeagol.encode: Encoding nucleic acid sequences into numeric form for PWM scanning.
+- smeagol.enrich: Calculate enrichment or depletion of PWM matches in a sequence.
+- smeagol.io: Read and write data (motifs and sequences).
+- smeagol.matrices: Analyze motifs in the form of PFMs, PPMs and PWMs.
+- smeagol.models: Encoding of PWMs into a model to scan sequences.
+- smeagol.scan: Scan nucleic acid sequences with PWMs and score putative binding sites.
+- smeagol.utils: Miscellaneous functions used by other modules.
+- smeagol.variant: Predict the effects of sequence variants on the PWM match score.
+- smeagol.visualize: Generating visualizations.
 
-
+## Documentation
+https://gruber-sciencelab.github.io/SMEAGOL/
 
 ## Tutorials
 
 See the [vignette](vignette_1.ipynb) for an example workflow using SMEAGOL.
 
+## Citation
 
+Please cite our [preprint](https://www.biorxiv.org/content/10.1101/2021.12.02.470930v1): Lal, A., Ferrarini, M.G. and Gruber, A.J., 2021. Investigating the human host-ssRNA virus interaction landscape using the SMEAGOL toolbox. bioRxiv.

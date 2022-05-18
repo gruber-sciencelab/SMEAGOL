@@ -12,7 +12,7 @@ def collect_data(file_pattern,
         col_to_collect (str): column to collect
         
     Returns:
-        df_all (pandas DataFrame): concatenated dataframe from all files matching pattern.
+        df_all (pandas DataFrame): A concatenated dataframe containing the `col_to_collect` column from all files matching the pattern `file_pattern`.
     """
     
     file_list = sorted(glob.glob(file_pattern))
