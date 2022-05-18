@@ -11,10 +11,11 @@ from sklearn.cluster import AgglomerativeClustering
 # Functions to check matrices
 
 def check_ppm(probs, warn=False, eps=1e-2):
-    """Function to check validity of a PPM.
+    """Function to check the validity of a PPM.
+    A valid PPM should have all values within the range [0,1], all rows summing to 1 (within a tolerance of eps), and exactly 4 columns.
 
     Args:
-        probs (np.array): Array containing probability values
+        probs (np.array): Numpy array containing probability values. The array should be 2-dimensional and have 4 columns.
 
     Raises:
         ValueError: if probs is an invalid PPM.
@@ -34,10 +35,11 @@ def check_ppm(probs, warn=False, eps=1e-2):
 
 
 def check_pfm(freqs, warn=False):
-    """Function to check validity of a PFM.
+    """Function to check the validity of a PFM.
+    A valid PFM should have non-negative integer values and exactly 4 columns.
 
     Args:
-        freqs (np.array): Array containing frequency values
+        freqs (np.array): Numpy array containing frequency values. The array should be 2-dimensional and have 4 columns.
 
     Raise:
         ValueError: if freqs is an invalid PFM.
@@ -54,10 +56,11 @@ def check_pfm(freqs, warn=False):
 
 
 def check_pwm(weights):
-    """Function to check validity of a PWM.
+    """Function to check the validity of a PWM.
+    A valid PWM should have exactly 4 columns.
 
     Args:
-        weights (np.array): Array containing PWM weights
+        weights (np.array): Numpy array containing PWM weights. The array should be 2-dimensional and have 4 columns.
 
     Raise:
         ValueError: if weights is an invalid PWM.
@@ -69,10 +72,10 @@ def check_pwm(weights):
 # Functions to calculate matrix properties
 
 def entropy(probs):
-    """Function to calculate entropy of a PPM or column of a PPM.
+    """Function to calculate the entropy of a PPM or column of a PPM. Entropy is calculated using the formula `H = -sum(p*log2(p))`.
 
     Args:
-        probs (np.array): Array containing probability values
+        probs (np.array): Numpy array containing probability values.
 
     Returns:
         result (float): Entropy value
@@ -83,13 +86,13 @@ def entropy(probs):
 
 
 def position_wise_ic(probs):
-    """Function to calculate information content of each position in a PPM.
-
+    """Function to calculate the information content (IC) of each position in a PPM. The IC for a specific position is calculated using the formula: IC = 2 - sum(p*log2(p)), assuming a background probability of 0.25 for each of the 4 bases.
+ 
     Args:
-        probs (np.array): array containing PPM probability values
+        probs (np.array): Numpy array containing PPM probability values. 
 
     Returns:
-        result (np.array): information content of each column in probs.
+        result (np.array): Numpy array containing the calculated information content of each column in probs.
 
     """
     check_ppm(probs)
@@ -101,13 +104,13 @@ def position_wise_ic(probs):
 # Functions to convert matrix types
 
 def ppm_to_pwm(probs):
-    """Function to convert PPM to PWM.
+    """Function to convert a valid PPM into a PWM, using the formula: PWM = log2(PPM/B), where the background probability B is set to 0.25.
 
     Args:
-        probs (np.array): array containing PPM probability values
+        probs (np.array): Numpy array containing PPM probability values
 
     Returns:
-        Numpy array containing PWM.
+        Numpy array containing the PWM. The shape of this array is (L, 4) where L is the PWM length.
 
     """
     check_ppm(probs)
@@ -115,7 +118,7 @@ def ppm_to_pwm(probs):
 
 
 def pfm_to_ppm(freqs, pseudocount=0.1):
-    """Function to convert PFM to PPM.
+    """Function to convert a valid PFM into a PPM. The matrix is normalized so that every position sums to 1, thus converting from a matrix of frequencies to a matrix of probabilities. To avoid zeros, a value of pseudocount/4 is first added to each position before normalization.
 
     Args:
         freqs (np.array): array containing PFM values
@@ -137,29 +140,29 @@ def pwm_to_ppm(weights):
 # Functions to manipulate matrices
 
 def normalize_pm(pm):
-    """Function to normalize position matrix so that all rows sum to 1.
+    """Function to normalize a position matrix so that all rows sum to 1.
 
     Args:
-        pm (np.array): Array containing probability values
+        pm (np.array): Numpy array containing probability values
 
     Return:
-        np.array with all rows normalized to sum to 1.
+        Numpy array with all rows normalized to sum to 1.
     """
     return np.array([x / np.sum(x) for x in pm])
 
 
 def trim_ppm(probs, frac_threshold):
-    """Function to trim non-informative columns from ends of a PPM.
+    """Function to trim non-informative positions from the ends of a PPM. See `position_wise_ic` for how information content of each position is calculated.
 
     Args:
-        probs (np.array): array containing PPM probability values
+        probs (np.array): Numpy array containing PPM probability values
         frac_threshold (float): threshold between 0 and 1. The mean information content of all columns in
                                 the matrix will be calculated and any continuous columns in the beginning and start
                                 of the matrix that have information content less than frac_threshold * mean IC will
                                 be dropped.
 
     Returns:
-        result (np.array): array containing trimmed PPM.
+        result (np.array): Numpy array containing trimmed PPM.
     """
     # Checks
     check_ppm(probs)
@@ -190,7 +193,7 @@ def trim_ppm(probs, frac_threshold):
 # Functions to calculate similarity between matrices
 
 def cos_sim(a, b):
-    """Function to calculate cosine similarity between two vectors.
+    """Function to calculate the cosine similarity between two vectors.
 
     Args:
         a, b (np.array): 1-D arrays.
@@ -204,13 +207,13 @@ def cos_sim(a, b):
 
 
 def matrix_correlation(X, Y):
-    """Function to calculate correlation between two equal-sized matrices.
+    """Function to calculate the correlation between two equal-sized matrices. The values in each matrix are unrolled into a 1-D array and the Pearson correlation of the two 1-D arrays is returned.
 
     Args:
         X, Y (np.array): two numpy arrays with same shape
 
     Returns:
-        corr (float): correlation between X and Y
+        corr (float): Pearson correlation between X and Y (unrolled into 1-D arrays)
 
     Raises:
         ValueError: if X and Y do not have equal shapes.
@@ -233,7 +236,7 @@ def order_pms(X, Y):
         X, Y (np.array): two position matrices.
 
     Returns:
-        X, Y (np.array): two position matrices ordered by width.
+        X, Y (np.array): two position matrices ordered by width, X being smaller.
     """
     if len(Y) < len(X):
         X, Y = Y, X
@@ -241,14 +244,14 @@ def order_pms(X, Y):
 
 
 def align_pms(X, Y, min_overlap=None):
-    """Function to calculate normalized correlation between two position matrices.
+    """Function to generate all possible overlaps between two position matrices.
 
     Inputs:
         X, Y (np.array): two position matrices.
         min_overlap (int): minimum overlap allowed between matrices
 
     Returns:
-        result: tuples containing matrix start and end positions corresponding to each alignment.
+        result: tuples containing matrix start and end positions corresponding to each possible alignment of the two matrices.
     """
 
     X, Y = order_pms(X, Y)
@@ -281,14 +284,14 @@ def align_pms(X, Y, min_overlap=None):
 
 
 def ncorr(X, Y, min_overlap=None):
-    """Function to calculate normalized correlation between two position matrices.
+    """Function to calculate the normalized Pearson correlation between two position matrices, as defined in doi: 10.1093/nar/gkx314.
 
     Inputs:
         X, Y (np.array): two position matrices.
         min_overlap (int): minimum overlap allowed between matrices
 
     Returns:
-        result (float): normalized correlation value
+        result (float): normalized Pearson correlation value
     """
     ncorrs = []
 
@@ -318,13 +321,13 @@ def ncorr(X, Y, min_overlap=None):
 
 
 def pairwise_ncorrs(mats):
-    """Function to calculate all pairwise normalized correlations between a list of position matrices.
+    """Function to calculate all pairwise normalized Pearson correlations between a list of position matrices.
 
     Args:
-        mats (list): list of position matrices.
+        mats (list): a list of position matrices.
 
     Returns:
-        ncorrs (np.array): All pairwise normalized correlations between matrices in mats.
+        ncorrs (np.array): All pairwise normalized Pearson correlations between matrices in mats.
 
     """
     # Get all pairwise combinations of matrices
@@ -347,13 +350,13 @@ def pairwise_ncorrs(mats):
 # Functions to cluster matrices and choose representatives
 
 def choose_representative_pm(df, sims=None, maximize='median', weight_col='weights', matrix_type='PWM'):
-    """Function to choose a representative position matrix from a group.
+    """Function to choose a representative position matrix from a group. If 2 matrices are supplied, the one with lower entropy is chosen. For larger sets of matrices, the matrix with the highest mean (or median) normalized Pearson correlation to all other matrices is chosen.
 
     Args:
-        df (pandas df): Dataframe containing position matrix values and IDs.
+        df (pandas df): Dataframe containing position matrix values and IDs. The ID column should be named 'Matrix_id'.
         sims (np.array): pairwise similarities between all PWMs in df
-        maximize (str): 'mean' or 'median'. Metric  to choose representative matrix.
-        weight_col(str): column in df that contains matrix values.
+        maximize (str): 'mean' or 'median'. Metric to choose representative matrix.
+        weight_col(str): the column in df that contains matrix values.
         matrix_type (str): PPM or PWM
 
     Returns:
@@ -392,7 +395,7 @@ def choose_representative_pm(df, sims=None, maximize='median', weight_col='weigh
 
 def choose_cluster_representative_pms(df, sims=None, clusters=None, maximize='median',
                                        weight_col='weights', matrix_type='PWM'):
-    """Function to choose a representative position matrix from each cluster.
+    """Function to choose a representative position matrix from each cluster. This performs `choose_representative_pm` to choose a representative matrix within each supplied cluster.
 
     Args:
         df (pandas df): Dataframe containing position matrix values and IDs.
@@ -426,6 +429,7 @@ def choose_cluster_representative_pms(df, sims=None, clusters=None, maximize='me
 
 def cluster_pms(df, n_clusters, sims=None, weight_col='weights'):
     """Function to cluster position matrices.
+    A distance matrix between the matrices is computed using the normalized Pearson correlation metric and agglomerative clustering is used to find clusters. `choose_representative_pm` is called to identify a representative matrix from each cluster.
 
     Args:
         df (pandas df): Dataframe containing position matrix values and IDs.
