@@ -10,7 +10,7 @@ import statsmodels.stats.multitest as multitest
 # Smeagol imports
 from .utils import shuffle_records, read_bg_seqs
 from .encode import SeqGroups
-from .scan import scan_sequences, get_tiling_windows_over_genome, count_in_sliding_windows, count_in_window
+from .scan import scan_sequences, get_tiling_windows_over_genome, count_in_sliding_windows, _count_in_window
 
 
 def _enrich_over_shuffled(real_counts, shuf_stats, background='binomial', records=None):
@@ -184,7 +184,7 @@ def enrich_in_window(window, sites, genome, matrix_id=None, alternative='two-sid
     effective_genome_len = sum([len(x) for x in genome]) - width + 1
     # Calculate the number of successes and failures in selected region
     result['len'] = effective_window_len
-    result['count'] = count_in_window(window, sites, matrix_id)
+    result['count'] = _count_in_window(window, sites, matrix_id)
     count_neg = result['len'] - result['count']
     # Calculate the number of successes and failures in whole genome
     result['tot_count'] = len(matrix_sites)

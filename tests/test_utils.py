@@ -1,5 +1,8 @@
-from smeagol.utils import *
+from smeagol.utils import _equals, shuffle_records
 from collections import Counter
+import numpy as np
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 def test_equals():

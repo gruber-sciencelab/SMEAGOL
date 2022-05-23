@@ -45,5 +45,5 @@ def test_enrich_in_genome():
     assert np.all(enr.Matrix_id == expected.Matrix_id)
     assert np.all(enr.sense == expected.sense)
     assert np.all([_equals(enr.p[i], expected.p[i]) for i in range(len(enr))])
-    assert np.all(_equals(enr.fdr[i], expected.fdr[i]) for i in range(len(enr))])
+    assert np.all([_equals(enr.fdr[i], expected.fdr[i]) for i in range(len(enr))])
     assert np.all(enr.adj_len == expected.adj_len)
