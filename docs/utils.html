@@ -37,7 +37,7 @@ from Bio.SeqRecord import SeqRecord
 from smeagol.io import read_fasta, write_fasta
 
 
-def equals(x, y, eps=1e-4):
+def _equals(x, y, eps=1e-4):
     &#34;&#34;&#34;Function to test whether two values or lists/arrays are equal with some tolerance.
     
     Args:
@@ -137,8 +137,63 @@ def read_bg_seqs(file, records, simN):
     return bg
     
     
+def _get_tiling_windows_over_record(record, width, shift):
+    &#34;&#34;&#34;Function to get tiling windows over a sequence.
+    
+    Args:
+        record (SeqRecord): SeqRecord object
+        width (int): width of tiling windows
+        shift (int): shift between successive windows
+    
+    Returns:
+        windows (pd.DataFrame): windows covering input sequence
         
-    </code></pre>
+    &#34;&#34;&#34;
+    # Get start positions
+    starts = list(range(0, len(record), shift))
+    # Get end positions
+    ends = [np.min([x + width, len(record)]) for x in starts]
+    # Add sequence ID
+    idxs = np.tile(record.id, len(starts))
+    # Combine
+    windows = pd.DataFrame({&#39;id&#39;:idxs, &#39;start&#39;:starts, &#39;end&#39;:ends})
+    return windows
+
+
+def get_tiling_windows_over_genome(genome, width, shift=None):
+    &#34;&#34;&#34;Function to get tiling windows over a genome.
+        
+    Args:
+        genome (list): list of SeqRecord objects
+        width (int): width of tiling windows
+        shift (int): shift between successive windows. By default the same as width.
+    
+    Returns:
+        windows (pd.DataFrame): windows covering all sequences in genome
+        
+    &#34;&#34;&#34;
+    if shift is None:
+        shift = width
+    if len(genome) == 1:
+        windows = _get_tiling_windows_over_record(genome[0], width, shift)
+    else:
+        windows = pd.concat([_get_tiling_windows_over_record(record, width, shift) for record in genome])
+    return windows
+
+
+def get_site_seq(site, seqs):
+    &#34;&#34;&#34;Function to extract the sequence for a binding site.
+    
+    Args:
+        site: dataframe containing name, start and end.
+        seqs (list / str): list of seqrecord objects or fasta file.
+    Returns:
+        result (str): sequence of binding site
+    &#34;&#34;&#34;
+    if type(seqs) == str:
+        seqs = read_fasta(seqs)
+    seq = [x for x in seqs if x.name == site[&#39;name&#39;]][0]
+    return str(seq.seq[site.start:site.end])</code></pre>
 </details>
 </section>
 <section>
@@ -148,44 +203,6 @@ def read_bg_seqs(file, records, simN):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="smeagol.utils.equals"><code class="name flex">
-<span>def <span class="ident">equals</span></span>(<span>x, y, eps=0.0001)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to test whether two values or lists/arrays are equal with some tolerance.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt>x, y: float, int, list or np.array objects</dt>
-<dt><strong><code>eps</code></strong></dt>
-<dd>tolerance value</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>True if x and y are equal within the tolerance limit, False otherwise</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def equals(x, y, eps=1e-4):
-    &#34;&#34;&#34;Function to test whether two values or lists/arrays are equal with some tolerance.
-    
-    Args:
-        x, y: float, int, list or np.array objects
-        eps: tolerance value
-        
-    Returns:
-        True if x and y are equal within the tolerance limit, False otherwise
-        
-    &#34;&#34;&#34;
-    if type(x) == type(y) == np.ndarray:
-        assert x.shape == y.shape
-        return np.all(abs(x - y) &lt; (eps * x.size))
-    elif type(x) == type(y) == list:
-        assert len(x) == len(y)
-        return np.all(abs(x - y) &lt; (eps * len(x)))
-    else:
-        return abs(x - y) &lt; eps</code></pre>
-</details>
-</dd>
 <dt id="smeagol.utils.get_Seq"><code class="name flex">
 <span>def <span class="ident">get_Seq</span></span>(<span>seq)</span>
 </code></dt>
@@ -220,6 +237,79 @@ def read_bg_seqs(file, records, simN):
         return seq
     else:
         raise TypeError(&#39;Input sequence must be a string, Seqrecord or Seq object.&#39;)</code></pre>
+</details>
+</dd>
+<dt id="smeagol.utils.get_site_seq"><code class="name flex">
+<span>def <span class="ident">get_site_seq</span></span>(<span>site, seqs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Function to extract the sequence for a binding site.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>site</code></strong></dt>
+<dd>dataframe containing name, start and end.</dd>
+</dl>
+<p>seqs (list / str): list of seqrecord objects or fasta file.</p>
+<h2 id="returns">Returns</h2>
+<p>result (str): sequence of binding site</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_site_seq(site, seqs):
+    &#34;&#34;&#34;Function to extract the sequence for a binding site.
+    
+    Args:
+        site: dataframe containing name, start and end.
+        seqs (list / str): list of seqrecord objects or fasta file.
+    Returns:
+        result (str): sequence of binding site
+    &#34;&#34;&#34;
+    if type(seqs) == str:
+        seqs = read_fasta(seqs)
+    seq = [x for x in seqs if x.name == site[&#39;name&#39;]][0]
+    return str(seq.seq[site.start:site.end])</code></pre>
+</details>
+</dd>
+<dt id="smeagol.utils.get_tiling_windows_over_genome"><code class="name flex">
+<span>def <span class="ident">get_tiling_windows_over_genome</span></span>(<span>genome, width, shift=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Function to get tiling windows over a genome.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>genome</code></strong> :&ensp;<code>list</code></dt>
+<dd>list of SeqRecord objects</dd>
+<dt><strong><code>width</code></strong> :&ensp;<code>int</code></dt>
+<dd>width of tiling windows</dd>
+<dt><strong><code>shift</code></strong> :&ensp;<code>int</code></dt>
+<dd>shift between successive windows. By default the same as width.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>windows (pd.DataFrame): windows covering all sequences in genome</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_tiling_windows_over_genome(genome, width, shift=None):
+    &#34;&#34;&#34;Function to get tiling windows over a genome.
+        
+    Args:
+        genome (list): list of SeqRecord objects
+        width (int): width of tiling windows
+        shift (int): shift between successive windows. By default the same as width.
+    
+    Returns:
+        windows (pd.DataFrame): windows covering all sequences in genome
+        
+    &#34;&#34;&#34;
+    if shift is None:
+        shift = width
+    if len(genome) == 1:
+        windows = _get_tiling_windows_over_record(genome[0], width, shift)
+    else:
+        windows = pd.concat([_get_tiling_windows_over_record(record, width, shift) for record in genome])
+    return windows</code></pre>
 </details>
 </dd>
 <dt id="smeagol.utils.read_bg_seqs"><code class="name flex">
@@ -342,8 +432,9 @@ Writes shuf_records to file if out_file provided.</p></div>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="smeagol.utils.equals" href="#smeagol.utils.equals">equals</a></code></li>
 <li><code><a title="smeagol.utils.get_Seq" href="#smeagol.utils.get_Seq">get_Seq</a></code></li>
+<li><code><a title="smeagol.utils.get_site_seq" href="#smeagol.utils.get_site_seq">get_site_seq</a></code></li>
+<li><code><a title="smeagol.utils.get_tiling_windows_over_genome" href="#smeagol.utils.get_tiling_windows_over_genome">get_tiling_windows_over_genome</a></code></li>
 <li><code><a title="smeagol.utils.read_bg_seqs" href="#smeagol.utils.read_bg_seqs">read_bg_seqs</a></code></li>
 <li><code><a title="smeagol.utils.shuffle_records" href="#smeagol.utils.shuffle_records">shuffle_records</a></code></li>
 </ul>

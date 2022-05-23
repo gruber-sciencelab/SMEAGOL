@@ -31,16 +31,17 @@ import numpy as np
 import itertools
 
 from .encode import SeqGroups, one_hot_dict, one_hot_encode
+from .utils import get_tiling_windows_over_genome
 
 
 def score_site(pwm, seq, position_wise=False):
-    &#34;&#34;&#34;Function to score a binding site sequence.
+    &#34;&#34;&#34;Function to score a binding site sequence using a PWM.
     
      Args:
-        pwm (np.array): PWM weights
-        seq (str): sequence the same length as the PWM.
+        pwm (np.array): Numpy array containing the PWM weights
+        seq (str): A sequence the same length as the PWM.
      Returns:
-        score (float): PWM score
+        score (float): PWM match score
     
     &#34;&#34;&#34;
     seq = one_hot_encode(seq, rc=False)
@@ -52,20 +53,20 @@ def score_site(pwm, seq, position_wise=False):
         return np.sum(position_wise_scores)
     
 
-def score_base(pwm, base, pos):
-    &#34;&#34;&#34;Function to get score for a particular base in a PWM.
+def _score_base(pwm, base, pos):
+    &#34;&#34;&#34;Function to get the match score for a particular base using a PWM.
     
     Args:
         pwm (np.array): PWM weights
         base (str): base to score
-        pos (int): relative position of base in the motif
+        pos (int): The position in the PWM to match with the base.
     Returns:
         score (float): score for base
     &#34;&#34;&#34;
     return np.sum(np.multiply(pwm[pos, :], one_hot_dict[base]))
 
 
-def locate_sites(encoding, model, thresholded, scores=None):
+def _locate_sites(encoding, model, thresholded, scores=None):
     &#34;&#34;&#34; Function to locate potential binding sites given model predictions.
     
     Args:
@@ -96,8 +97,8 @@ def locate_sites(encoding, model, thresholded, scores=None):
     return sites
 
 
-def bin_sites_by_score(encoding, model, thresholded, scores, bins):
-    &#34;&#34;&#34; Function to locate potential binding sites and bin them based on their score.
+def _bin_sites_by_score(encoding, model, thresholded, scores, bins):
+    &#34;&#34;&#34; Function to locate potential binding sites and bin them based on their PWM match score.
     
     Args:
         encoding (SeqEncoding): SeqEncoding object
@@ -125,7 +126,7 @@ def bin_sites_by_score(encoding, model, thresholded, scores, bins):
     return result
 
                        
-def count_sites(encoding, model, thresholded):
+def _count_sites(encoding, model, thresholded):
     &#34;&#34;&#34;Function to count the number of matches per PWM.
         
     Args:
@@ -154,7 +155,7 @@ def count_sites(encoding, model, thresholded):
         return result
 
 
-def find_sites_seq(encoding, model, threshold, outputs = [&#39;sites&#39;], score=False, seq_batch=0):
+def _find_sites_seq(encoding, model, threshold, outputs = [&#39;sites&#39;], score=False, seq_batch=0):
     &#34;&#34;&#34;Function to predict binding sites on encoded sequence(s).
     
     Args:
@@ -180,13 +181,13 @@ def find_sites_seq(encoding, model, threshold, outputs = [&#39;sites&#39;], scor
         score = True
         assert type(threshold) == np.ndarray
         thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score, seq_batch)
-        output[&#39;binned_counts&#39;] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
+        output[&#39;binned_counts&#39;] = _bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     else:
         thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score, seq_batch)
     if &#39;sites&#39; in outputs:
-        output[&#39;sites&#39;] = locate_sites(encoding, model, thresholded, scores)
+        output[&#39;sites&#39;] = _locate_sites(encoding, model, thresholded, scores)
     if (&#39;counts&#39;  in outputs) or (&#39;stats&#39; in outputs):
-        counts = count_sites(encoding, model, thresholded)
+        counts = _count_sites(encoding, model, thresholded)
     if &#39;counts&#39; in outputs:
         output[&#39;counts&#39;] = counts
     if &#39;stats&#39; in outputs:
@@ -197,7 +198,7 @@ def find_sites_seq(encoding, model, threshold, outputs = [&#39;sites&#39;], scor
     return output
 
 
-def find_sites_in_groups(encoding, model, threshold, outputs=[&#39;sites&#39;], score=False, combine_seqs=False, sep_ids=False, seq_batch=0):
+def _find_sites_in_groups(encoding, model, threshold, outputs=[&#39;sites&#39;], score=False, combine_seqs=False, sep_ids=False, seq_batch=0):
     &#34;&#34;&#34;Function to predict binding sites on class SeqGroups.
     
     Args:
@@ -226,7 +227,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=[&#39;sites&#39;], 
         if &#39;counts&#39; not in outputs:
             inter_outputs.append(&#39;counts&#39;)
         inter_outputs.remove(&#39;stats&#39;)
-    output_per_seq = [find_sites_seq(seq, model, threshold, inter_outputs, score=score, seq_batch=seq_batch) for seq in encoding.seqs]
+    output_per_seq = [_find_sites_seq(seq, model, threshold, inter_outputs, score=score, seq_batch=seq_batch) for seq in encoding.seqs]
     # Concatenate binding sites
     output = {}
     for key in output_per_seq[0].keys():
@@ -284,57 +285,13 @@ def scan_sequences(seqs, model, threshold, sense=&#39;+&#39;, rcomp=&#39;none&#3
     # Encode the sequences
     encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense, group_by=group_by)
     # Find sites
-    preds = find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
+    preds = _find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
     return preds
     
 
 # Analysis in windows
 
-def get_tiling_windows_over_record(record, width, shift):
-    &#34;&#34;&#34;Function to get tiling windows over a sequence.
-    
-    Args:
-        record (SeqRecord): SeqRecord object
-        width (int): width of tiling windows
-        shift (int): shift between successive windows
-    
-    Returns:
-        windows (pd.DataFrame): windows covering input sequence
-        
-    &#34;&#34;&#34;
-    # Get start positions
-    starts = list(range(0, len(record), shift))
-    # Get end positions
-    ends = [np.min([x + width, len(record)]) for x in starts]
-    # Add sequence ID
-    idxs = np.tile(record.id, len(starts))
-    # Combine
-    windows = pd.DataFrame({&#39;id&#39;:idxs, &#39;start&#39;:starts, &#39;end&#39;:ends})
-    return windows
-
-
-def get_tiling_windows_over_genome(genome, width, shift=None):
-    &#34;&#34;&#34;Function to get tiling windows over a genome.
-        
-    Args:
-        genome (list): list of SeqRecord objects
-        width (int): width of tiling windows
-        shift (int): shift between successive windows. By default the same as width.
-    
-    Returns:
-        windows (pd.DataFrame): windows covering all sequences in genome
-        
-    &#34;&#34;&#34;
-    if shift is None:
-        shift = width
-    if len(genome) == 1:
-        windows = get_tiling_windows_over_record(genome[0], width, shift)
-    else:
-        windows = pd.concat([get_tiling_windows_over_record(record, width, shift) for record in genome])
-    return windows
-
-
-def count_in_window(window, sites, matrix_id):
+def _count_in_window(window, sites, matrix_id=None):
     &#34;&#34;&#34;Function to calculate count of PWMs in subsequence.
     
     Args:
@@ -346,8 +303,10 @@ def count_in_window(window, sites, matrix_id):
         count (int): Number of binding sites for given PWM in selected window.
 
     &#34;&#34;&#34;
-    count = len(sites[(sites.Matrix_id==matrix_id) &amp; (sites.id==window.id) &amp; (sites.start &gt;= window.start) &amp; (sites.start &lt; window.end)])
-    return count
+    sites_to_count = sites[(sites.id==window.id) &amp; (sites.start &gt;= window.start) &amp; (sites.start &lt; window.end)]
+    if matrix_id is not None:
+        sites_to_count = sites_to_count[(sites_to_count.Matrix_id==matrix_id)]
+    return len(sites_to_count)
 
 
 def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
@@ -365,7 +324,7 @@ def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
         
     &#34;&#34;&#34;
     windows = get_tiling_windows_over_genome(genome, width, shift)
-    windows[&#39;count&#39;] = windows.apply(count_in_window, axis=1, args=(sites, matrix_id))
+    windows[&#39;count&#39;] = windows.apply(_count_in_window, axis=1, args=(sites, matrix_id))
     windows.reset_index(inplace=True, drop=True)
     return windows</code></pre>
 </details>
@@ -377,60 +336,6 @@ def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="smeagol.scan.bin_sites_by_score"><code class="name flex">
-<span>def <span class="ident">bin_sites_by_score</span></span>(<span>encoding, model, thresholded, scores, bins)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to locate potential binding sites and bin them based on their score.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>encoding</code></strong> :&ensp;<code>SeqEncoding</code></dt>
-<dd>SeqEncoding object</dd>
-<dt><strong><code>model</code></strong> :&ensp;<code>model</code></dt>
-<dd>parameterized convolutional model</dd>
-<dt><strong><code>thresholded</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>positions where the input sequence(s) match the input
-PWM(s) with a score above the specified threshold.</dd>
-<dt><strong><code>scores</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>score for each potential binding site.</dd>
-<dt><strong><code>bins</code></strong> :&ensp;<code>list</code></dt>
-<dd>list of fractional values (0 to 1) to bin scores.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>sites (pd.DataFrame): dataframe containing information on each potential binding site.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def bin_sites_by_score(encoding, model, thresholded, scores, bins):
-    &#34;&#34;&#34; Function to locate potential binding sites and bin them based on their score.
-    
-    Args:
-        encoding (SeqEncoding): SeqEncoding object
-        model (model): parameterized convolutional model
-        thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-        scores (np.array): score for each potential binding site.
-        bins (list): list of fractional values (0 to 1) to bin scores.
-      
-    Returns:
-        sites (pd.DataFrame): dataframe containing information on each potential binding site.
-     
-    &#34;&#34;&#34;
-    seq_idx = thresholded[0]
-    pwm_idx = thresholded[2]
-    frac_scores = scores/model.max_scores[pwm_idx]
-    binned_scores = pd.cut(frac_scores, np.concatenate([bins, [1]]))
-    result = pd.crosstab(index = [model.Matrix_ids[pwm_idx], model.widths[pwm_idx]], 
-                         columns = [encoding.ids[seq_idx], 
-                                    encoding.names[seq_idx], 
-                                    encoding.senses[seq_idx], 
-                                    binned_scores])
-    result = result.melt(ignore_index=False).reset_index()
-    result.columns = [&#39;Matrix_id&#39;, &#39;width&#39;, &#39;id&#39;, &#39;name&#39;, &#39;sense&#39;, &#39;bin&#39;, &#39;num&#39;]
-    return result</code></pre>
-</details>
-</dd>
 <dt id="smeagol.scan.count_in_sliding_windows"><code class="name flex">
 <span>def <span class="ident">count_in_sliding_windows</span></span>(<span>sites, genome, matrix_id, width, shift=None)</span>
 </code></dt>
@@ -470,401 +375,9 @@ PWM(s) with a score above the specified threshold.</dd>
         
     &#34;&#34;&#34;
     windows = get_tiling_windows_over_genome(genome, width, shift)
-    windows[&#39;count&#39;] = windows.apply(count_in_window, axis=1, args=(sites, matrix_id))
+    windows[&#39;count&#39;] = windows.apply(_count_in_window, axis=1, args=(sites, matrix_id))
     windows.reset_index(inplace=True, drop=True)
     return windows</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.count_in_window"><code class="name flex">
-<span>def <span class="ident">count_in_window</span></span>(<span>window, sites, matrix_id)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to calculate count of PWMs in subsequence.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>window</code></strong> :&ensp;<code>pd.DataFrame</code></dt>
-<dd>dataframe with columns id, start, end</dd>
-<dt><strong><code>sites</code></strong> :&ensp;<code>pd.DataFrame</code></dt>
-<dd>dataframe containing locations of binding sites</dd>
-<dt><strong><code>matrix_id</code></strong> :&ensp;<code>str</code></dt>
-<dd>selected PWM</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>count (int): Number of binding sites for given PWM in selected window.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def count_in_window(window, sites, matrix_id):
-    &#34;&#34;&#34;Function to calculate count of PWMs in subsequence.
-    
-    Args:
-        window (pd.DataFrame): dataframe with columns id, start, end
-        sites (pd.DataFrame): dataframe containing locations of binding sites
-        matrix_id (str): selected PWM
-    
-    Returns:
-        count (int): Number of binding sites for given PWM in selected window.
-
-    &#34;&#34;&#34;
-    count = len(sites[(sites.Matrix_id==matrix_id) &amp; (sites.id==window.id) &amp; (sites.start &gt;= window.start) &amp; (sites.start &lt; window.end)])
-    return count</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.count_sites"><code class="name flex">
-<span>def <span class="ident">count_sites</span></span>(<span>encoding, model, thresholded)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to count the number of matches per PWM.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>encoding</code></strong> :&ensp;<code>SeqEncoding</code></dt>
-<dd>SeqEncoding object</dd>
-<dt><strong><code>model</code></strong> :&ensp;<code>model</code></dt>
-<dd>parameterized convolutional model</dd>
-<dt><strong><code>thresholded</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>positions where the input sequence(s) match the input
-PWM(s) with a score above the specified threshold.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>result (pd.DataFrame): dataframe containing number of matches per PWM.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def count_sites(encoding, model, thresholded):
-    &#34;&#34;&#34;Function to count the number of matches per PWM.
-        
-    Args:
-        encoding (SeqEncoding): SeqEncoding object
-        model (model): parameterized convolutional model
-        thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-      
-    Returns:
-        result (pd.DataFrame): dataframe containing number of matches per PWM.
-     
-    &#34;&#34;&#34;
-    seq_idx = thresholded[0]
-    if len(seq_idx) == 0:
-        return pd.DataFrame({&#39;Matrix_id&#39;: [], &#39;width&#39;: [], &#39;id&#39;: [], &#39;name&#39;: [], &#39;sense&#39;: [], 
-                            &#39;num&#39;: []})
-    else:
-        pwm_idx = thresholded[2]
-        widths = model.widths[pwm_idx]
-        result = pd.crosstab(index = [model.Matrix_ids[pwm_idx], widths], 
-                         columns = [encoding.ids[seq_idx], 
-                                    encoding.names[seq_idx], 
-                                    encoding.senses[seq_idx]])
-        result = result.melt(ignore_index=False).reset_index()
-        result.columns = [&#39;Matrix_id&#39;, &#39;width&#39;, &#39;id&#39;, &#39;name&#39;, &#39;sense&#39;, &#39;num&#39;]
-        return result</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.find_sites_in_groups"><code class="name flex">
-<span>def <span class="ident">find_sites_in_groups</span></span>(<span>encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False, seq_batch=0)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to predict binding sites on class SeqGroups.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>encoding</code></strong> :&ensp;<code>SeqGroups</code></dt>
-<dd>object of class SeqGroups</dd>
-<dt><strong><code>model</code></strong> :&ensp;<code>model</code></dt>
-<dd>class PWMModel</dd>
-<dt><strong><code>threshold</code></strong> :&ensp;<code>float</code> or <code>np.arange</code></dt>
-<dd>threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).</dd>
-<dt><strong><code>outputs</code></strong> :&ensp;<code>list</code></dt>
-<dd>List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts'
-and 'stats'. For example: ['sites', 'counts'].
-'sites' outputs binding site locations
-'counts' outputs the total count of binding sites per PWM
-'binned_counts' outputs the counts of binding sites per PWM binned by score
-'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
-across multiple sequences.</dd>
-<dt><strong><code>score</code></strong> :&ensp;<code>bool</code></dt>
-<dd>output scores for binding sites. Only relevant if 'sites' is specified.</dd>
-<dt><strong><code>combine_seqs</code></strong> :&ensp;<code>bool</code></dt>
-<dd>combine outputs for multiple sequence groups into a single dataframe</dd>
-<dt><strong><code>sep_ids</code></strong> :&ensp;<code>bool</code></dt>
-<dd>separate outputs by sequence ID.</dd>
-<dt><strong><code>seq_batch</code></strong> :&ensp;<code>int</code></dt>
-<dd>number of sequences to scan at a time. If 0, scan all.</dd>
-</dl>
-<p>Returns:
-output (dict): dictionary containing specified outputs.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def find_sites_in_groups(encoding, model, threshold, outputs=[&#39;sites&#39;], score=False, combine_seqs=False, sep_ids=False, seq_batch=0):
-    &#34;&#34;&#34;Function to predict binding sites on class SeqGroups.
-    
-    Args:
-        encoding (SeqGroups): object of class SeqGroups
-        model (model): class PWMModel
-        threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
-        outputs (list): List containing the desired outputs - any combination of &#39;sites&#39;, &#39;counts&#39;, &#39;binned_counts&#39; 
-                        and &#39;stats&#39;. For example: [&#39;sites&#39;, &#39;counts&#39;].
-                        &#39;sites&#39; outputs binding site locations
-                        &#39;counts&#39; outputs the total count of binding sites per PWM
-                        &#39;binned_counts&#39; outputs the counts of binding sites per PWM binned by score
-                        &#39;stats&#39; outputs the mean and standard deviation of the number of binding sites per PWM,
-                        across multiple sequences.
-        score (bool): output scores for binding sites. Only relevant if &#39;sites&#39; is specified.
-        combine_seqs (bool): combine outputs for multiple sequence groups into a single dataframe
-        sep_ids (bool): separate outputs by sequence ID.
-        seq_batch (int): number of sequences to scan at a time. If 0, scan all.
-    
-    Returns: 
-        output (dict): dictionary containing specified outputs.
-        
-    &#34;&#34;&#34;
-    # Find binding sites per sequence or group of sequences
-    inter_outputs = outputs.copy()
-    if combine_seqs and (&#39;stats&#39; in outputs):
-        if &#39;counts&#39; not in outputs:
-            inter_outputs.append(&#39;counts&#39;)
-        inter_outputs.remove(&#39;stats&#39;)
-    output_per_seq = [find_sites_seq(seq, model, threshold, inter_outputs, score=score, seq_batch=seq_batch) for seq in encoding.seqs]
-    # Concatenate binding sites
-    output = {}
-    for key in output_per_seq[0].keys():
-        output[key] = pd.concat([x[key] for x in output_per_seq]).reset_index(drop=True)
-    # Combine binding sites
-    if combine_seqs:
-        if sep_ids:
-            if &#39;counts&#39; in output.keys():
-                output[&#39;counts&#39;] = output[&#39;counts&#39;].groupby([&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;, &#39;id&#39;]).num.sum().reset_index()
-            if &#39;binned_counts&#39; in output.keys():
-                output[&#39;binned_counts&#39;] = output[&#39;binned_counts&#39;].groupby([&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;, &#39;bin&#39;, &#39;id&#39;]).num.sum().reset_index()
-        else:
-            if &#39;counts&#39; in output.keys():
-                output[&#39;counts&#39;] = output[&#39;counts&#39;].groupby([&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;]).num.sum().reset_index()
-            if &#39;binned_counts&#39; in output.keys():
-                output[&#39;binned_counts&#39;] = output[&#39;binned_counts&#39;].groupby([&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;, &#39;bin&#39;]).num.sum().reset_index()
-        # Calculate stats
-        if &#39;stats&#39; in outputs:
-            stats = output[&#39;counts&#39;].groupby([&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;]).agg([len, np.mean, np.std]).reset_index()
-            stats.columns = [&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;, &#39;len&#39;, &#39;avg&#39;, &#39;sd&#39;] 
-            output[&#39;stats&#39;] = stats 
-            if &#39;counts&#39; not in outputs:
-                del output[&#39;counts&#39;]
-    
-    return output</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.find_sites_seq"><code class="name flex">
-<span>def <span class="ident">find_sites_seq</span></span>(<span>encoding, model, threshold, outputs=['sites'], score=False, seq_batch=0)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to predict binding sites on encoded sequence(s).</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>encoding</code></strong> :&ensp;<code>SeqEncoding</code></dt>
-<dd>object of class SeqEncoding</dd>
-<dt><strong><code>model</code></strong> :&ensp;<code>model</code></dt>
-<dd>class PWMModel</dd>
-<dt><strong><code>threshold</code></strong> :&ensp;<code>float</code> or <code>np.arange</code></dt>
-<dd>threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).</dd>
-<dt><strong><code>outputs</code></strong> :&ensp;<code>list</code></dt>
-<dd>List containing the desired outputs - any combination of 'sites', 'counts', 'binned_counts'
-and 'stats'. For example: ['sites', 'counts'].
-'sites' outputs binding site locations
-'counts' outputs the total count of binding sites per PWM
-'binned_counts' outputs the counts of binding sites per PWM binned by score
-'stats' outputs the mean and standard deviation of the number of binding sites per PWM,
-across multiple sequences.</dd>
-<dt><strong><code>score</code></strong> :&ensp;<code>bool</code></dt>
-<dd>output scores for binding sites. Only relevant if 'sites' is specified.</dd>
-<dt><strong><code>seq_batch</code></strong> :&ensp;<code>int</code></dt>
-<dd>number of sequences to scan at a time. If 0, scan all.</dd>
-</dl>
-<p>Returns:
-output (dict): dictionary containing specified outputs.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def find_sites_seq(encoding, model, threshold, outputs = [&#39;sites&#39;], score=False, seq_batch=0):
-    &#34;&#34;&#34;Function to predict binding sites on encoded sequence(s).
-    
-    Args:
-        encoding (SeqEncoding): object of class SeqEncoding
-        model (model): class PWMModel
-        threshold (float or np.arange): threshold (from 0 to 1) to identify binding sites OR np.arange (with binned_counts=True).
-        outputs (list): List containing the desired outputs - any combination of &#39;sites&#39;, &#39;counts&#39;, &#39;binned_counts&#39; 
-                        and &#39;stats&#39;. For example: [&#39;sites&#39;, &#39;counts&#39;].
-                        &#39;sites&#39; outputs binding site locations
-                        &#39;counts&#39; outputs the total count of binding sites per PWM
-                        &#39;binned_counts&#39; outputs the counts of binding sites per PWM binned by score
-                        &#39;stats&#39; outputs the mean and standard deviation of the number of binding sites per PWM,
-                         across multiple sequences.
-        score (bool): output scores for binding sites. Only relevant if &#39;sites&#39; is specified.
-        seq_batch (int): number of sequences to scan at a time. If 0, scan all.
-    
-    Returns: 
-        output (dict): dictionary containing specified outputs.
-        
-    &#34;&#34;&#34;
-    output = {}
-    if &#39;binned_counts&#39; in outputs:
-        score = True
-        assert type(threshold) == np.ndarray
-        thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score, seq_batch)
-        output[&#39;binned_counts&#39;] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
-    else:
-        thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score, seq_batch)
-    if &#39;sites&#39; in outputs:
-        output[&#39;sites&#39;] = locate_sites(encoding, model, thresholded, scores)
-    if (&#39;counts&#39;  in outputs) or (&#39;stats&#39; in outputs):
-        counts = count_sites(encoding, model, thresholded)
-    if &#39;counts&#39; in outputs:
-        output[&#39;counts&#39;] = counts
-    if &#39;stats&#39; in outputs:
-        stats = counts.groupby([&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;, &#39;name&#39;]).agg([len, np.mean, np.std]).reset_index()
-        stats.columns = [&#39;Matrix_id&#39;, &#39;width&#39;, &#39;sense&#39;, &#39;name&#39;, &#39;len&#39;, &#39;avg&#39;, &#39;sd&#39;] 
-        output[&#39;stats&#39;] = stats
-
-    return output</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.get_tiling_windows_over_genome"><code class="name flex">
-<span>def <span class="ident">get_tiling_windows_over_genome</span></span>(<span>genome, width, shift=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to get tiling windows over a genome.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>genome</code></strong> :&ensp;<code>list</code></dt>
-<dd>list of SeqRecord objects</dd>
-<dt><strong><code>width</code></strong> :&ensp;<code>int</code></dt>
-<dd>width of tiling windows</dd>
-<dt><strong><code>shift</code></strong> :&ensp;<code>int</code></dt>
-<dd>shift between successive windows. By default the same as width.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>windows (pd.DataFrame): windows covering all sequences in genome</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def get_tiling_windows_over_genome(genome, width, shift=None):
-    &#34;&#34;&#34;Function to get tiling windows over a genome.
-        
-    Args:
-        genome (list): list of SeqRecord objects
-        width (int): width of tiling windows
-        shift (int): shift between successive windows. By default the same as width.
-    
-    Returns:
-        windows (pd.DataFrame): windows covering all sequences in genome
-        
-    &#34;&#34;&#34;
-    if shift is None:
-        shift = width
-    if len(genome) == 1:
-        windows = get_tiling_windows_over_record(genome[0], width, shift)
-    else:
-        windows = pd.concat([get_tiling_windows_over_record(record, width, shift) for record in genome])
-    return windows</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.get_tiling_windows_over_record"><code class="name flex">
-<span>def <span class="ident">get_tiling_windows_over_record</span></span>(<span>record, width, shift)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to get tiling windows over a sequence.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>record</code></strong> :&ensp;<code>SeqRecord</code></dt>
-<dd>SeqRecord object</dd>
-<dt><strong><code>width</code></strong> :&ensp;<code>int</code></dt>
-<dd>width of tiling windows</dd>
-<dt><strong><code>shift</code></strong> :&ensp;<code>int</code></dt>
-<dd>shift between successive windows</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>windows (pd.DataFrame): windows covering input sequence</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def get_tiling_windows_over_record(record, width, shift):
-    &#34;&#34;&#34;Function to get tiling windows over a sequence.
-    
-    Args:
-        record (SeqRecord): SeqRecord object
-        width (int): width of tiling windows
-        shift (int): shift between successive windows
-    
-    Returns:
-        windows (pd.DataFrame): windows covering input sequence
-        
-    &#34;&#34;&#34;
-    # Get start positions
-    starts = list(range(0, len(record), shift))
-    # Get end positions
-    ends = [np.min([x + width, len(record)]) for x in starts]
-    # Add sequence ID
-    idxs = np.tile(record.id, len(starts))
-    # Combine
-    windows = pd.DataFrame({&#39;id&#39;:idxs, &#39;start&#39;:starts, &#39;end&#39;:ends})
-    return windows</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.locate_sites"><code class="name flex">
-<span>def <span class="ident">locate_sites</span></span>(<span>encoding, model, thresholded, scores=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to locate potential binding sites given model predictions.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>encoding</code></strong> :&ensp;<code>SeqEncoding</code></dt>
-<dd>SeqEncoding object</dd>
-<dt><strong><code>model</code></strong> :&ensp;<code>model</code></dt>
-<dd>parameterized convolutional model</dd>
-<dt><strong><code>thresholded</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>positions where the input sequence(s) match the input
-PWM(s) with a score above the specified threshold.</dd>
-<dt><strong><code>scores</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>score for each potential binding site</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>sites (pd.DataFrame): dataframe containing information on each potential binding site.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def locate_sites(encoding, model, thresholded, scores=None):
-    &#34;&#34;&#34; Function to locate potential binding sites given model predictions.
-    
-    Args:
-        encoding (SeqEncoding): SeqEncoding object
-        model (model): parameterized convolutional model
-        thresholded (np.array): positions where the input sequence(s) match the input 
-                                PWM(s) with a score above the specified threshold.
-        scores (np.array): score for each potential binding site
-      
-    Returns:
-        sites (pd.DataFrame): dataframe containing information on each potential binding site.
-     
-    &#34;&#34;&#34;
-    seq_idx = thresholded[0]
-    pos_idx = thresholded[1]
-    pwm_idx = thresholded[2]
-    sites = pd.DataFrame({&#39;id&#39;: encoding.ids[seq_idx],
-                              &#39;name&#39;:encoding.names[seq_idx],
-                              &#39;sense&#39;:encoding.senses[seq_idx],
-                              &#39;start&#39;: pos_idx,
-                              &#39;Matrix_id&#39;: model.Matrix_ids[pwm_idx]})
-    sites[&#39;width&#39;] = model.widths[pwm_idx]
-    sites[&#39;end&#39;] = sites[&#39;start&#39;] + sites[&#39;width&#39;]
-    if scores is not None:
-        sites[&#39;score&#39;] = scores
-        sites[&#39;max_score&#39;] = model.max_scores[pwm_idx]
-        sites[&#39;frac_score&#39;] = sites[&#39;score&#39;]/sites[&#39;max_score&#39;]
-    return sites</code></pre>
 </details>
 </dd>
 <dt id="smeagol.scan.scan_sequences"><code class="name flex">
@@ -939,69 +452,36 @@ output (dict): dictionary containing specified outputs.</p></div>
     # Encode the sequences
     encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense, group_by=group_by)
     # Find sites
-    preds = find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
+    preds = _find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
     return preds</code></pre>
-</details>
-</dd>
-<dt id="smeagol.scan.score_base"><code class="name flex">
-<span>def <span class="ident">score_base</span></span>(<span>pwm, base, pos)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to get score for a particular base in a PWM.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>pwm</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>PWM weights</dd>
-<dt><strong><code>base</code></strong> :&ensp;<code>str</code></dt>
-<dd>base to score</dd>
-<dt><strong><code>pos</code></strong> :&ensp;<code>int</code></dt>
-<dd>relative position of base in the motif</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>score (float): score for base</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def score_base(pwm, base, pos):
-    &#34;&#34;&#34;Function to get score for a particular base in a PWM.
-    
-    Args:
-        pwm (np.array): PWM weights
-        base (str): base to score
-        pos (int): relative position of base in the motif
-    Returns:
-        score (float): score for base
-    &#34;&#34;&#34;
-    return np.sum(np.multiply(pwm[pos, :], one_hot_dict[base]))</code></pre>
 </details>
 </dd>
 <dt id="smeagol.scan.score_site"><code class="name flex">
 <span>def <span class="ident">score_site</span></span>(<span>pwm, seq, position_wise=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to score a binding site sequence.</p>
+<div class="desc"><p>Function to score a binding site sequence using a PWM.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>pwm</code></strong> :&ensp;<code>np.array</code></dt>
-<dd>PWM weights</dd>
+<dd>Numpy array containing the PWM weights</dd>
 <dt><strong><code>seq</code></strong> :&ensp;<code>str</code></dt>
-<dd>sequence the same length as the PWM.</dd>
+<dd>A sequence the same length as the PWM.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>score (float): PWM score</p></div>
+<p>score (float): PWM match score</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def score_site(pwm, seq, position_wise=False):
-    &#34;&#34;&#34;Function to score a binding site sequence.
+    &#34;&#34;&#34;Function to score a binding site sequence using a PWM.
     
      Args:
-        pwm (np.array): PWM weights
-        seq (str): sequence the same length as the PWM.
+        pwm (np.array): Numpy array containing the PWM weights
+        seq (str): A sequence the same length as the PWM.
      Returns:
-        score (float): PWM score
+        score (float): PWM match score
     
     &#34;&#34;&#34;
     seq = one_hot_encode(seq, rc=False)
@@ -1031,17 +511,8 @@ output (dict): dictionary containing specified outputs.</p></div>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="smeagol.scan.bin_sites_by_score" href="#smeagol.scan.bin_sites_by_score">bin_sites_by_score</a></code></li>
 <li><code><a title="smeagol.scan.count_in_sliding_windows" href="#smeagol.scan.count_in_sliding_windows">count_in_sliding_windows</a></code></li>
-<li><code><a title="smeagol.scan.count_in_window" href="#smeagol.scan.count_in_window">count_in_window</a></code></li>
-<li><code><a title="smeagol.scan.count_sites" href="#smeagol.scan.count_sites">count_sites</a></code></li>
-<li><code><a title="smeagol.scan.find_sites_in_groups" href="#smeagol.scan.find_sites_in_groups">find_sites_in_groups</a></code></li>
-<li><code><a title="smeagol.scan.find_sites_seq" href="#smeagol.scan.find_sites_seq">find_sites_seq</a></code></li>
-<li><code><a title="smeagol.scan.get_tiling_windows_over_genome" href="#smeagol.scan.get_tiling_windows_over_genome">get_tiling_windows_over_genome</a></code></li>
-<li><code><a title="smeagol.scan.get_tiling_windows_over_record" href="#smeagol.scan.get_tiling_windows_over_record">get_tiling_windows_over_record</a></code></li>
-<li><code><a title="smeagol.scan.locate_sites" href="#smeagol.scan.locate_sites">locate_sites</a></code></li>
 <li><code><a title="smeagol.scan.scan_sequences" href="#smeagol.scan.scan_sequences">scan_sequences</a></code></li>
-<li><code><a title="smeagol.scan.score_base" href="#smeagol.scan.score_base">score_base</a></code></li>
 <li><code><a title="smeagol.scan.score_site" href="#smeagol.scan.score_site">score_site</a></code></li>
 </ul>
 </li>
