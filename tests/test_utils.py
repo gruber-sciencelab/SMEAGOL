@@ -3,9 +3,9 @@ from collections import Counter
 
 
 def test_equals():
-    assert not equals(1.01, 1.012)
-    assert equals(1.01, 1.01002)
-    assert not equals(np.array([1., 2., 3.]), np.array([1., 2., 2.999]))
+    assert not _equals(1.01, 1.012)
+    assert _equals(1.01, 1.01002)
+    assert not _equals(np.array([1., 2., 3.]), np.array([1., 2., 2.999]))
 
     
 genome = [SeqRecord(seq=Seq('AGAGCGCATTTCCTACGCATGCTCGATCAAATGCTACGGATTCTAAAA'), id='seg1', name='seg1'),

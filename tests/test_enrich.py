@@ -3,7 +3,7 @@ import os
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from smeagol.models import PWMModel
-from smeagol.utils import equals
+from smeagol.utils import _equals
 
 script_dir = os.path.dirname(__file__)
 rel_path = "data"
@@ -38,12 +38,12 @@ def test_enrich_in_genome():
     assert np.all(stats.Matrix_id == expected.Matrix_id)
     assert np.all(stats.sense == expected.sense)
     assert np.all(stats.avg == expected.avg)
-    assert np.all([equals(stats.sd[i], expected.sd[i]) for i in range(len(stats))])
+    assert np.all([_equals(stats.sd[i], expected.sd[i]) for i in range(len(stats))])
     # Test enrichment
     enr = enrichment_results['enrichment']
     expected = pd.read_csv(os.path.join(data_path, 'enr.csv'))
     assert np.all(enr.Matrix_id == expected.Matrix_id)
     assert np.all(enr.sense == expected.sense)
-    assert np.all([equals(enr.p[i], expected.p[i]) for i in range(len(enr))])
-    assert np.all([equals(enr.fdr[i], expected.fdr[i]) for i in range(len(enr))])
+    assert np.all([_equals(enr.p[i], expected.p[i]) for i in range(len(enr))])
+    assert np.all(_equals(enr.fdr[i], expected.fdr[i]) for i in range(len(enr))])
     assert np.all(enr.adj_len == expected.adj_len)

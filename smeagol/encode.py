@@ -99,10 +99,7 @@ class SeqEncoding:
         names (np.array):Numpy array containing the names of all sequences.
         seqs (np.array): Numpy array containing the integer encoded sequences.
         senses (np.array): Numpy array containing the senses ('+' or '-') of all sequences.
-        
-    Methods:
-        check_equal_lens (records): checks that all sequences have the same length. 
-    
+            
     """
     def __init__(self, records, rcomp='none', sense=None):
         """
@@ -113,7 +110,7 @@ class SeqEncoding:
         """
         if type(records) == 'str':
             records = read_fasta(records)
-        self.check_equal_lens(records)
+        self._check_equal_lens(records)
         self.len = len(records[0].seq)
         self.ids = np.array([record.id for record in records])
         self.names = np.array([record.name for record in records])
@@ -137,7 +134,7 @@ class SeqEncoding:
             ])
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
-    def check_equal_lens(self, records):
+    def _check_equal_lens(self, records):
         """
         Checks that all sequences have the same length.
         
@@ -171,11 +168,11 @@ class SeqGroups:
         if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) > 1:
-            records = self.group_by(records, group_by)
+            records = self._group_by(records, group_by)
             self.seqs = [SeqEncoding(record, sense=sense, rcomp=rcomp) for record in records]
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
-    def group_by(self, records, key):
+    def _group_by(self, records, key):
         """
         
         """

@@ -1,6 +1,6 @@
 from smeagol.variant import *
 from smeagol.encode import SeqEncoding
-from smeagol.utils import equals
+from smeagol.utils import _equals
 
 import pandas as pd
 import numpy as np
@@ -46,6 +46,6 @@ def test_variant_effect_on_sites():
     assert np.all(result['end'].values == [3, 3, 3])
     assert np.all(result['Matrix_id'].values == ['x', 'z', 'z'])
     assert np.all(result['seq'].values == ['GAC', 'GCT', 'GCT'])
-    assert equals(result.max_score.values, np.array([3.33376361, 2.50816981, 2.50816981]))
-    assert equals(result.score.values, np.array([1., 0.769149, 0.769149]))
-    assert equals(result.variant_score.values, np.array([0.4080668, 0.1419828, 0.769149]))
+    assert _equals(result.max_score.values, np.array([3.33376361, 2.50816981, 2.50816981]))
+    assert _equals(result.score.values, np.array([1., 0.769149, 0.769149]))
+    assert _equals(result.variant_score.values, np.array([0.4080668, 0.1419828, 0.769149]))

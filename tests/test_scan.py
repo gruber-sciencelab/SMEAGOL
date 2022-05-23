@@ -1,7 +1,7 @@
 from smeagol.scan import *
 from smeagol.encode import SeqEncoding
 from smeagol.models import PWMModel
-from smeagol.utils import equals
+from smeagol.utils import _equals
 import os
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -29,8 +29,8 @@ def test_locate_sites():
     expected = [['S1.2', 'S1.2'], ['S1', 'S1'], ['+', '+'], [0, 0], ['x', 'z'], [3, 3], [3, 3], [2.343, 1.929]]
     for field, exp in zip(fields, expected):
         assert np.all(result[field].values == exp)
-    assert equals(result.max_score.values, np.array([3.33376361, 2.50816981]))
-    assert equals(result.frac_score.values, np.array([0.70280927926, 0.76908668]))
+    assert _equals(result.max_score.values, np.array([3.33376361, 2.50816981]))
+    assert _equals(result.frac_score.values, np.array([0.70280927926, 0.76908668]))
 
 
 def test_bin_sites_by_score():

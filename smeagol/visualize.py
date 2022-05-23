@@ -13,6 +13,7 @@ import seqlogo
 import scipy.stats as stats
 from sklearn import manifold
 
+
 def pwm_logo(weights, title="", height=15):
     """Function to visualize the sequence logo of a PWM.
 

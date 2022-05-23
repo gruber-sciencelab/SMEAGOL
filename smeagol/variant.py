@@ -1,29 +1,15 @@
 import pandas as pd
 import numpy as np
 from .io import read_fasta
-from .scan import score_site, score_base
+from .scan import score_site, _score_base
+from .utils import get_site_seq
 
 
-def get_site_seq(site, seqs):
-    """Function to get sequence for a binding site.
-    
-    Args:
-        site: dataframe containing name, start and end.
-        seqs (list / str): list of seqrecord objects or fasta file.
-    Returns:
-        result (str): sequence of binding site
-    """
-    if type(seqs) == str:
-        seqs = read_fasta(seqs)
-    seq = [x for x in seqs if x.name == site['name']][0]
-    return str(seq.seq[site.start:site.end])
-
-
-def variant_effect_on_site(site, variants):
+def _variant_effect_on_site(site, variants):
     """Function to predict the effects of variants on a single binding site.
     
     Args:
-        sites (pd.DataFrame): dataframe containing information on the binding site to analyze.
+        sites (pd.DataFrame): dataframe containing information on the binding site to analyze. Contains columns 'name', 'start' and 'end'
         variants (pd.DataFrame): dataframe containing information on each variant to analyze. Contains 
                                  columns 'name', 'pos', 'alt'.
     Returns:
@@ -36,7 +22,7 @@ def variant_effect_on_site(site, variants):
         site_variants = site_variants.merge(pd.DataFrame(site).transpose())
         # Get score of each variant
         site_variants['relative_pos'] = site_variants.pos - site.start
-        site_variants['alt_base_score'] = site_variants.apply(lambda x: score_base(x.weights, x.alt, x.relative_pos), axis=1)
+        site_variants['alt_base_score'] = site_variants.apply(lambda x: _score_base(x.weights, x.alt, x.relative_pos), axis=1)
         site_variants['variant_score'] = site_variants.apply(lambda x: np.sum(np.delete(x.ref_scores, x.relative_pos)), axis=1)
         site_variants['variant_score'] = (site_variants.variant_score + site_variants.alt_base_score)/site_variants.max_score
         site_variants.drop(columns=['alt_base_score', 'weights', 'ref_scores', 'relative_pos'], inplace=True)
@@ -48,11 +34,11 @@ def variant_effect_on_sites(sites, variants, seqs, pwms):
     """Function to predict variant effect on sites.
     
      Args:
-        sites (pd.DataFrame): dataframe containing information on each binding site to analyze.
+        sites (pd.DataFrame): dataframe containing information on each binding site to analyze. Contains columns 'name' (sequence name), 'matrix_id' (ID of the PWM that matched to the site), 'start' (site position) and 'end' (site end).
         variants (pd.DataFrame): dataframe containing information on each variant to analyze. Contains 
-                                 columns 'name', 'pos', 'alt'.
+                                 columns 'name' (sequence name), 'pos' (variant position), and 'alt' (alternate base at variant position).
         seqs (list / str): list of seqrecord objects or fasta file.
-        pwms (pd.DataFrame): dataframe containing information on PWMs.
+        pwms (pd.DataFrame): dataframe containing information on PWMs. Contains columns 'matrix_id' and 'weights'.
      Returns:
         effects (pd.DataFrame): dataframe containing information on variant effects.
     
@@ -75,7 +61,7 @@ def variant_effect_on_sites(sites, variants, seqs, pwms):
         all_sites['score'] = all_sites.apply(lambda x: np.sum(x.ref_scores)/x.max_score, axis=1)
     
     # Get and concatenate results for all sites
-    variant_effects = pd.concat(list(all_sites.apply(lambda x: variant_effect_on_site(x, variants), axis=1)))
+    variant_effects = pd.concat(list(all_sites.apply(lambda x: _variant_effect_on_site(x, variants), axis=1)))
     variant_effects.reset_index(drop=True, inplace=True)
 
     return variant_effects

@@ -8,8 +8,8 @@ def collect_data(file_pattern,
     
     Args:
         file_pattern (str): pattern to search for in filenames
-        col_with_index (str): column to set as index
-        col_to_collect (str): column to collect
+        col_with_index (str): Name of the column to set as index
+        col_to_collect (str): Name of the column to collect
         
     Returns:
         df_all (pandas DataFrame): A concatenated dataframe containing the `col_to_collect` column from all files matching the pattern `file_pattern`.

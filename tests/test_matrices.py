@@ -1,7 +1,7 @@
 from smeagol.matrices import *
 import os
 import pandas as pd
-from smeagol.utils import equals
+from smeagol.utils import _equals
 import pytest
 
 
@@ -52,19 +52,19 @@ def test_normalize_pm():
     expected = np.array([[0.09090909, 0.09090909, 0.09090909, 0.72727273], 
                          [.5, .48, 0.01, 0.01],
                          [.1, .6, .1, .2]])
-    assert equals(normalize_pm(probs), expected)
+    assert _equals(normalize_pm(probs), expected)
 
 
 def test_entropy():
     probs = np.array([[0.1, 0.1, 0.1, 0.7], [.5, .48, 0.01, 0.01], [.1, .6, .1, .2]])
-    assert equals(entropy(probs[0]), 1.3567796494470394)
-    assert equals(entropy(probs), 4.068876338442915)
+    assert _equals(entropy(probs[0]), 1.3567796494470394)
+    assert _equals(entropy(probs), 4.068876338442915)
 
 
 def test_position_wise_ic():
     probs = np.array([[0.1, 0.1, 0.1, 0.7], [.5, .48, 0.01, 0.01], [.1, .6, .1, .2]])
     expected = np.array([0.6432203505529606, 0.8588539054587927, 0.42904940554533133])
-    assert equals(position_wise_ic(probs), expected)
+    assert _equals(position_wise_ic(probs), expected)
     
 
 def test_matrix_conversions():
@@ -73,13 +73,13 @@ def test_matrix_conversions():
     expected = np.array([[.25/11, .25/11, .25/11, 10.25/11], 
                         [5.25/11, 5.25/11, .25/11, .25/11], 
                         [1.25/11, 6.25/11, 2.25/11, 1.25/11]])
-    assert equals(probs, expected)
+    assert _equals(probs, expected)
     weights = ppm_to_pwm(probs)
     expected = np.array([[-3.45943162, -3.45943162, -3.45943162,  1.89812039],
        [ 0.9328858 ,  0.9328858 , -3.45943162, -3.45943162],
        [-1.13750352,  1.18442457, -0.28950662, -1.13750352]])
-    assert equals(weights, expected)
-    assert equals(pwm_to_ppm(weights), probs)
+    assert _equals(weights, expected)
+    assert _equals(pwm_to_ppm(weights), probs)
     
 
 def test_trim_ppm():
@@ -93,7 +93,7 @@ def test_trim_ppm():
                       [.5, .48, 0.01, 0.01], 
                       [.25, .25, .3, .2], 
                       [0.1, 0.1, 0.1, 0.7]])
-    assert equals(result, expected) 
+    assert _equals(result, expected) 
 
 
 def test_matrix_correlation():
@@ -104,7 +104,7 @@ def test_matrix_correlation():
                   [ 1.        ,  0.94110631, -4.64385619, -4.64385619],
                   [-3.64385619,  1.84799691, -3.05889369, -2.32192809]])
     result = matrix_correlation(X, Y)
-    assert equals(result, 0.91069616)
+    assert _equals(result, 0.91069616)
     Y = np.array([[-1.32192809, -1.32192809, -1.32192809,  1.48542683],
                   [ 1.        ,  0.94110631, -4.64385619, -4.64385619]])
     with pytest.raises(ValueError):
@@ -121,9 +121,9 @@ def test_ncorr():
                   [ 0.        ,  0.        ,  0.32013481, -0.41205364],
                   [-0.99106688, -1.97336487,  1.31654155, -0.41205364]])
     result = ncorr(X, Y, min_overlap=3)
-    assert equals(result, 0.25069190635147276)
+    assert _equals(result, 0.25069190635147276)
     result = ncorr(Y, X, min_overlap=3)
-    assert equals(result, 0.25069190635147276)
+    assert _equals(result, 0.25069190635147276)
 
     
 def test_pairwise_ncorrs():
@@ -132,7 +132,7 @@ def test_pairwise_ncorrs():
     expected = np.array([[1, 0.2506919063514727, 0.9871733730221669],
                          [0.2506919063514727, 1, 0.21411930243854532],
                          [0.9871733730221669, 0.21411930243854532, 1]])
-    assert equals(result, expected) 
+    assert _equals(result, expected) 
 
 
 def test_choose_representative_pm():

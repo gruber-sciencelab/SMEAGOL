@@ -16,13 +16,13 @@ from .matrices import check_pfm, check_pwm, check_ppm
 
 
 def read_fasta(file):
-    """Function to read sequences from a fasta or fasta.gz file
+    """Function to read sequences from a fasta or fasta.gz file.
     
     Args:
         file (str): path to file
     
     Returns:
-        records (list): list of seqRecords, one for each sequence in the fasta file.
+        records (list): list of seqRecord objects, one for each sequence in the fasta file.
     
     """
     records = []
@@ -48,6 +48,7 @@ def write_fasta(records, file, gz=True):
     Params:
         records (list): list of seqRecord objects to write.
         file (str): path to file
+        gz (bool): If true, compress the output file with gzip.
     
     Returns:
         Writes records to the file
@@ -64,7 +65,7 @@ def write_fasta(records, file, gz=True):
 
 
 def read_pms_from_file(file, matrix_type='PPM', check_lens=False, transpose=False, delimiter='\t'):
-    """Function to read position matrices from a FASTA-like file in Attract format.
+    """Function to read position matrices from a FASTA-like file.
     
     The input file is expected to follow the format:
     
@@ -86,9 +87,9 @@ def read_pms_from_file(file, matrix_type='PPM', check_lens=False, transpose=Fals
     set `check_lens=True` to confirm that the loaded PWMs match the expected lengths.
         
     Args:
-        pm_file (str): file containing PMs
-        matrix_type (str): PWM, PPM (default) or PFM
-        check_lens (bool): check that PWM lengths match the lengths provided in the file
+        pm_file (str): path to the file containing PMs
+        matrix_type (str): 'PWM', 'PPM' (default) or 'PFM'
+        check_lens (bool): check that the matrix lengths match the lengths provided in the file
         transpose (bool): transpose the matrices
         delimiter (str): The string used to separate values in the file
     
@@ -162,9 +163,9 @@ def read_pms_from_dir(dirname, matrix_type='PPM', transpose=False):
     `transpose=True`. 
     
     Args:
-        dirname (str): folder containing PMs in individual files
-        matrix_type (str): PWM, PPM (default) or PFM
-        transpose (bool): transpose the matrix
+        dirname (str): path to the folder containing PMs in individual files
+        matrix_type (str): 'PWM', 'PPM' (default) or 'PFM'
+        transpose (bool): If true, transpose the matrix
     
     Returns:
         pandas dataframe containing PMs
@@ -209,7 +210,7 @@ def read_pms_from_dir(dirname, matrix_type='PPM', transpose=False):
     return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
 
 
-def download_rbpdb(species='human'):
+def _download_rbpdb(species='human'):
     """Function to download all motifs and metadata from RBPDB.
        Downloads version 1.3.1.
        
@@ -243,7 +244,7 @@ def download_rbpdb(species='human'):
         
         
 def load_rbpdb(species='human', matrix_type='PWM'):
-    """Function to load all motifs and metadata from RBPDB as a pandas DF.
+    """Function to download all motifs and metadata from RBPDB and load them as a pandas DF.
        Downloads version 1.3.1.
        
     Args:
@@ -254,7 +255,7 @@ def load_rbpdb(species='human', matrix_type='PWM'):
     
     """
     # Download
-    download_rbpdb(species='human')
+    _download_rbpdb(species='human')
     
     # Set paths
     download_dir = os.path.join('motifs/rbpdb/', species)
@@ -284,7 +285,7 @@ def load_rbpdb(species='human', matrix_type='PWM'):
     return df
 
 
-def download_attract():
+def _download_attract():
     """Function to download all motifs and metadata from ATtRACT.
         
     Returns:
@@ -304,13 +305,13 @@ def download_attract():
 
 
 def load_attract():
-    """Function to load all motifs and metadata from ATtRACT as a pandas DF.
+    """Function to download all motifs and metadata from ATtRACT and load them as a pandas DF.
         
     Returns:
         df (pandas df): contains matrices
     
     """
-    download_attract()
+    _download_attract()
     download_dir = 'motifs/attract'
     df = pd.read_csv(os.path.join(download_dir, 'ATtRACT_db.txt'), sep="\t")
     ppms = read_pms_from_file(os.path.join(download_dir, 'pwm.txt'), check_lens=True)
@@ -318,8 +319,8 @@ def load_attract():
     return df
 
 
-def download_smeagol_PWMset():
-    """Function to download motifs used in the paper.
+def _download_smeagol_PWMset():
+    """Function to download the curated set of motifs used in the SMEAGOL paper.
         
     Returns:
         df (pandas df): contains matrices
@@ -338,7 +339,7 @@ def download_smeagol_PWMset():
 
 
 def load_smeagol_PWMset(dataset='representative'):
-    """Function to load motifs used in the paper as a pandas DF.
+    """Function to download the curated set of motifs used in the SMEAGOL paper and load them as a pandas dataframe.
     
     Args:
         dataset: 'full' or 'representative'.
@@ -347,7 +348,7 @@ def load_smeagol_PWMset(dataset='representative'):
         df (pandas df): contains matrices
     
     """
-    download_smeagol_PWMset()
+    _download_smeagol_PWMset()
     download_dir = 'motifs/smeagol_datasets'
     h5_path = os.path.join(download_dir, 'attract_rbpdb_encode_filtered_human_pwms.h5')
     reps_path = os.path.join(download_dir, 'attract_rbpdb_encode_representative_matrices.txt') 
