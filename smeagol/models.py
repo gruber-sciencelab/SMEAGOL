@@ -12,21 +12,34 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # Define convolutional model
 
 class PWMModel:
-    """Class to contain convolutional model.
+    """Class to contain a convolutional model used for PWM scanning.
     
-    Args:
-        pwm_df (pd.DataFrame): dataframe containing PWM IDs and weights.
+    Attributes:
+        Matrix_ids (np.array): Numpy array containing the IDs of all the PWMs encoded in the model.
+        widths (np.array): Numpy array containing the widths of all the PWMs encoded in the model.
+        max_scores (np.array): Numpy array containing the maximum possible score for each PWM encoded in the model.
+        channels (int): Number of PWMs encoded in the model.
+        max_width (int): Width of the longest PWM encoded in the model.
+    
+    Methods:
+        set_model_weights: Encode PWM weights in the model.
+        predict: Scan an integer encoded sequence with the model.
+        predict_with_threshold: Scan an integer encoded sequence with the model and return matches with score above a specified threshold.
+        
     """
     def __init__(self, pwm_df):
-        # Store information
+        """
+        Args:
+            pwm_df (pd.DataFrame): A dataframe containing PWM IDs and weights.
+        """
         self.Matrix_ids = np.array(pwm_df.Matrix_id)
         self.widths = np.array(pwm_df.weights.apply(lambda x:x.shape[0]))
         self.max_scores = np.array(pwm_df.weights.apply(lambda x:np.max(x, axis=1).sum()))
         self.channels = len(pwm_df)
         self.max_width = max(self.widths)
-        self.define_model()
+        self._define_model()
         self.set_model_weights(pwm_df.weights)
-    def define_model(self):
+    def _define_model(self):
         """Define the conv model
         """
         input_seq = Input(shape=(None, 1))
@@ -43,7 +56,7 @@ class PWMModel:
         reshaped = reshape_layer_1(one_hot)
         output = conv_layer_1(reshaped)
         self.model = Model(inputs=input_seq, outputs=output, name="pwm_model")
-    def pad_weights(self, weights):
+    def _pad_weights(self, weights):
         """Function to pad weights with zeros
         """
         pad_widths = self.max_width - self.widths
@@ -53,17 +66,23 @@ class PWMModel:
         padded_weights = np.stack(padded_weights, axis=2)
         return padded_weights
     def set_model_weights(self, weights):
-        """Function to fix the weights of the conv model
+        """Function to fix the weights of the conv model using PWM weights.
+        
+        Args:
+            weights (np.array): Numpy array containing PWM weights.
         """
-        padded_weights = self.pad_weights(weights)
+        padded_weights = self._pad_weights(weights)
         self.model.layers[2].set_weights([np.array(base_one_hot)])
         self.model.layers[4].set_weights([padded_weights])
     def predict(self, seqs):
         """Scan encoded sequences with the model.
+        
+        Args:
+            seqs (np.array): Numpy array containing integer encoded sequences.
         """
         predictions = self.model.predict(tf.convert_to_tensor(seqs, dtype=tf.float32))
         return predictions
-    def predict_batch_with_threshold(self, seqs, thresholds, score):
+    def _predict_batch_with_threshold(self, seqs, thresholds, score):
         """Scan encoded sequences with the model and threshold the returned values."""
         # Inference using convolutional model
         predictions = self.predict(seqs)
@@ -107,7 +126,7 @@ class PWMModel:
             thresholded_list = []
             scores_list = []
             for i, batch in enumerate(seqs):
-                thresholded, scores = self.predict_batch_with_threshold(batch, thresholds, score)
+                thresholded, scores = self._predict_batch_with_threshold(batch, thresholds, score)
                 thresholded = (thresholded[0] + (i*seq_batch),
                                thresholded[1],
                                thresholded[2])
@@ -122,5 +141,5 @@ class PWMModel:
             else:
                 scores = None
         else:
-            thresholded, scores = self.predict_batch_with_threshold(seqs, thresholds, score)
+            thresholded, scores = self._predict_batch_with_threshold(seqs, thresholds, score)
         return thresholded, scores

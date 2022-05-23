@@ -29,15 +29,18 @@
 <pre><code class="python">import glob
 import pandas as pd
 
+
 def collect_data(file_pattern, 
+                 file_ids,
                  col_with_index, 
                  col_to_collect):
-    &#34;&#34;&#34;Collect a specific column from all result files and merge them based on a specific index column.
+    &#34;&#34;&#34;This function is used to aggregate multiple SMEAGOL result files, for example on different genomes. It collects a specific column (col_to_collect) from all the result files and merges these columns into a single dataframe. The merge is based on a specific index column (col_with_index) that should be present in all files.
     
     Args:
         file_pattern (str): pattern to search for in filenames
-        col_with_index (str): column to set as index
-        col_to_collect (str): column to collect
+        file_ids (list): list of IDs, one per file
+        col_with_index (str): Name of the column to set as index
+        col_to_collect (str): Name of the column to collect
         
     Returns:
         df_all (pandas DataFrame): A concatenated dataframe containing the `col_to_collect` column from all files matching the pattern `file_pattern`.
@@ -47,17 +50,16 @@ def collect_data(file_pattern,
 
     df_list = []
 
-    for curr_file in file_list:
+    for curr_id, curr_file in zip(file_ids, file_list):
         curr_df = pd.read_table(curr_file)
         curr_df = curr_df.set_index(col_with_index)
         curr_df = curr_df.loc[:,[col_to_collect]]
-        curr_file_id = str(curr_file.split(&#34;/&#34;)[2])
-        curr_df.columns = [curr_file_id]
+        curr_df.columns = [curr_id]
         df_list.append(curr_df)
 
     df_all = pd.concat(df_list, ignore_index=False, axis=1)
 
-    return(df_all)</code></pre>
+    return df_all</code></pre>
 </details>
 </section>
 <section>
@@ -68,18 +70,20 @@ def collect_data(file_pattern,
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="smeagol.aggregate.collect_data"><code class="name flex">
-<span>def <span class="ident">collect_data</span></span>(<span>file_pattern, col_with_index, col_to_collect)</span>
+<span>def <span class="ident">collect_data</span></span>(<span>file_pattern, file_ids, col_with_index, col_to_collect)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Collect a specific column from all result files and merge them based on a specific index column.</p>
+<div class="desc"><p>This function is used to aggregate multiple SMEAGOL result files, for example on different genomes. It collects a specific column (col_to_collect) from all the result files and merges these columns into a single dataframe. The merge is based on a specific index column (col_with_index) that should be present in all files.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>file_pattern</code></strong> :&ensp;<code>str</code></dt>
 <dd>pattern to search for in filenames</dd>
+<dt><strong><code>file_ids</code></strong> :&ensp;<code>list</code></dt>
+<dd>list of IDs, one per file</dd>
 <dt><strong><code>col_with_index</code></strong> :&ensp;<code>str</code></dt>
-<dd>column to set as index</dd>
+<dd>Name of the column to set as index</dd>
 <dt><strong><code>col_to_collect</code></strong> :&ensp;<code>str</code></dt>
-<dd>column to collect</dd>
+<dd>Name of the column to collect</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <p>df_all (pandas DataFrame): A concatenated dataframe containing the <code>col_to_collect</code> column from all files matching the pattern <code>file_pattern</code>.</p></div>
@@ -88,14 +92,16 @@ def collect_data(file_pattern,
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def collect_data(file_pattern, 
+                 file_ids,
                  col_with_index, 
                  col_to_collect):
-    &#34;&#34;&#34;Collect a specific column from all result files and merge them based on a specific index column.
+    &#34;&#34;&#34;This function is used to aggregate multiple SMEAGOL result files, for example on different genomes. It collects a specific column (col_to_collect) from all the result files and merges these columns into a single dataframe. The merge is based on a specific index column (col_with_index) that should be present in all files.
     
     Args:
         file_pattern (str): pattern to search for in filenames
-        col_with_index (str): column to set as index
-        col_to_collect (str): column to collect
+        file_ids (list): list of IDs, one per file
+        col_with_index (str): Name of the column to set as index
+        col_to_collect (str): Name of the column to collect
         
     Returns:
         df_all (pandas DataFrame): A concatenated dataframe containing the `col_to_collect` column from all files matching the pattern `file_pattern`.
@@ -105,17 +111,16 @@ def collect_data(file_pattern,
 
     df_list = []
 
-    for curr_file in file_list:
+    for curr_id, curr_file in zip(file_ids, file_list):
         curr_df = pd.read_table(curr_file)
         curr_df = curr_df.set_index(col_with_index)
         curr_df = curr_df.loc[:,[col_to_collect]]
-        curr_file_id = str(curr_file.split(&#34;/&#34;)[2])
-        curr_df.columns = [curr_file_id]
+        curr_df.columns = [curr_id]
         df_list.append(curr_df)
 
     df_all = pd.concat(df_list, ignore_index=False, axis=1)
 
-    return(df_all)</code></pre>
+    return df_all</code></pre>
 </details>
 </dd>
 </dl>

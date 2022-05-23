@@ -53,7 +53,7 @@ def integer_encode(seq, rc=False):
     """Function to encode a nucleic acid sequence as a sequence of integers.
     
     Args:
-      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      seq (str, Seq or SeqRecord object): Nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
       rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
@@ -74,7 +74,7 @@ def one_hot_encode(seq, rc=False):
     """Function to one-hot encode a nucleic acid sequence.
     
     Args:
-      seq (str, Seq or SeqRecord object): nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
+      seq (str, Seq or SeqRecord object): Nucleic acid sequence to encode. Allowed characters are A, C, G, T, U, Z, N, W, S, M, K, R, Y, B, D, H, V.
       rc (bool): If True, reverse complement the sequence before encoding
     
     Returns:
@@ -99,10 +99,7 @@ class SeqEncoding:
         names (np.array):Numpy array containing the names of all sequences.
         seqs (np.array): Numpy array containing the integer encoded sequences.
         senses (np.array): Numpy array containing the senses ('+' or '-') of all sequences.
-        
-    Methods:
-        check_equal_lens (records): checks that all sequences have the same length. 
-    
+            
     """
     def __init__(self, records, rcomp='none', sense=None):
         """
@@ -113,7 +110,7 @@ class SeqEncoding:
         """
         if type(records) == 'str':
             records = read_fasta(records)
-        self.check_equal_lens(records)
+        self._check_equal_lens(records)
         self.len = len(records[0].seq)
         self.ids = np.array([record.id for record in records])
         self.names = np.array([record.name for record in records])
@@ -137,7 +134,7 @@ class SeqEncoding:
             ])
             self.ids = np.tile(self.ids, 2)
             self.names = np.tile(self.names, 2)
-    def check_equal_lens(self, records):
+    def _check_equal_lens(self, records):
         """
         Checks that all sequences have the same length.
         
@@ -155,8 +152,8 @@ class SeqEncoding:
 
     
 class SeqGroups:
-    """Encodes one or more groupings of equal-length sequences. 
-       Sequences in different groupings may have different lengths.    
+    """This class encodes one or more groups of equal-length nucleic acid sequences. 
+       Sequences in different groups may have different lengths.    
     """
     def __init__(self, records, rcomp='none', sense=None, group_by=None):
         """
@@ -165,19 +162,19 @@ class SeqGroups:
             rcomp (str): 'only' to encode the sequence reverse complements, 'both' to encode the reverse
                      complements as well as original sequences, or 'none'.
             sense (str): sense of sequences, '+' or '-'.
-             group_by (str): key by which to group sequences. If None, each sequence will be a separate group.
+            group_by (str): An attribute by which to group the sequences. If None, each sequence will be a separate group.
 
         """
         if type(records) == str:
             records = read_fasta(records)
         if (group_by is not None) and (len(records)) > 1:
-            records = self.group_by(records, group_by)
+            records = self._group_by(records, group_by)
             self.seqs = [SeqEncoding(record, sense=sense, rcomp=rcomp) for record in records]
         else:
             self.seqs = [SeqEncoding([record], sense=sense, rcomp=rcomp) for record in records]
-    def group_by(self, records, key):
+    def _group_by(self, records, key):
         """
-        
+        Group sequences by a common attribute.
         """
         records_dict = defaultdict(list)
         for record in records:

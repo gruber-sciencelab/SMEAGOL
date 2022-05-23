@@ -44,13 +44,13 @@ from .matrices import check_pfm, check_pwm, check_ppm
 
 
 def read_fasta(file):
-    &#34;&#34;&#34;Function to read sequences from a fasta or fasta.gz file
+    &#34;&#34;&#34;Function to read sequences from a fasta or fasta.gz file.
     
     Args:
         file (str): path to file
     
     Returns:
-        records (list): list of seqRecords, one for each sequence in the fasta file.
+        records (list): list of seqRecord objects, one for each sequence in the fasta file.
     
     &#34;&#34;&#34;
     records = []
@@ -76,6 +76,7 @@ def write_fasta(records, file, gz=True):
     Params:
         records (list): list of seqRecord objects to write.
         file (str): path to file
+        gz (bool): If true, compress the output file with gzip.
     
     Returns:
         Writes records to the file
@@ -92,7 +93,7 @@ def write_fasta(records, file, gz=True):
 
 
 def read_pms_from_file(file, matrix_type=&#39;PPM&#39;, check_lens=False, transpose=False, delimiter=&#39;\t&#39;):
-    &#34;&#34;&#34;Function to read position matrices from a FASTA-like file in Attract format.
+    &#34;&#34;&#34;Function to read position matrices from a FASTA-like file.
     
     The input file is expected to follow the format:
     
@@ -114,9 +115,9 @@ def read_pms_from_file(file, matrix_type=&#39;PPM&#39;, check_lens=False, transp
     set `check_lens=True` to confirm that the loaded PWMs match the expected lengths.
         
     Args:
-        pm_file (str): file containing PMs
-        matrix_type (str): PWM, PPM (default) or PFM
-        check_lens (bool): check that PWM lengths match the lengths provided in the file
+        pm_file (str): path to the file containing PMs
+        matrix_type (str): &#39;PWM&#39;, &#39;PPM&#39; (default) or &#39;PFM&#39;
+        check_lens (bool): check that the matrix lengths match the lengths provided in the file
         transpose (bool): transpose the matrices
         delimiter (str): The string used to separate values in the file
     
@@ -190,9 +191,9 @@ def read_pms_from_dir(dirname, matrix_type=&#39;PPM&#39;, transpose=False):
     `transpose=True`. 
     
     Args:
-        dirname (str): folder containing PMs in individual files
-        matrix_type (str): PWM, PPM (default) or PFM
-        transpose (bool): transpose the matrix
+        dirname (str): path to the folder containing PMs in individual files
+        matrix_type (str): &#39;PWM&#39;, &#39;PPM&#39; (default) or &#39;PFM&#39;
+        transpose (bool): If true, transpose the matrix
     
     Returns:
         pandas dataframe containing PMs
@@ -237,7 +238,7 @@ def read_pms_from_dir(dirname, matrix_type=&#39;PPM&#39;, transpose=False):
     return pd.DataFrame({&#39;Matrix_id&#39;:pm_ids, value_col:pms})
 
 
-def download_rbpdb(species=&#39;human&#39;):
+def _download_rbpdb(species=&#39;human&#39;):
     &#34;&#34;&#34;Function to download all motifs and metadata from RBPDB.
        Downloads version 1.3.1.
        
@@ -271,7 +272,7 @@ def download_rbpdb(species=&#39;human&#39;):
         
         
 def load_rbpdb(species=&#39;human&#39;, matrix_type=&#39;PWM&#39;):
-    &#34;&#34;&#34;Function to load all motifs and metadata from RBPDB as a pandas DF.
+    &#34;&#34;&#34;Function to download all motifs and metadata from RBPDB and load them as a pandas DF.
        Downloads version 1.3.1.
        
     Args:
@@ -282,7 +283,7 @@ def load_rbpdb(species=&#39;human&#39;, matrix_type=&#39;PWM&#39;):
     
     &#34;&#34;&#34;
     # Download
-    download_rbpdb(species=&#39;human&#39;)
+    _download_rbpdb(species=&#39;human&#39;)
     
     # Set paths
     download_dir = os.path.join(&#39;motifs/rbpdb/&#39;, species)
@@ -312,7 +313,7 @@ def load_rbpdb(species=&#39;human&#39;, matrix_type=&#39;PWM&#39;):
     return df
 
 
-def download_attract():
+def _download_attract():
     &#34;&#34;&#34;Function to download all motifs and metadata from ATtRACT.
         
     Returns:
@@ -332,13 +333,13 @@ def download_attract():
 
 
 def load_attract():
-    &#34;&#34;&#34;Function to load all motifs and metadata from ATtRACT as a pandas DF.
+    &#34;&#34;&#34;Function to download all motifs and metadata from ATtRACT and load them as a pandas DF.
         
     Returns:
         df (pandas df): contains matrices
     
     &#34;&#34;&#34;
-    download_attract()
+    _download_attract()
     download_dir = &#39;motifs/attract&#39;
     df = pd.read_csv(os.path.join(download_dir, &#39;ATtRACT_db.txt&#39;), sep=&#34;\t&#34;)
     ppms = read_pms_from_file(os.path.join(download_dir, &#39;pwm.txt&#39;), check_lens=True)
@@ -346,8 +347,8 @@ def load_attract():
     return df
 
 
-def download_smeagol_PWMset():
-    &#34;&#34;&#34;Function to download motifs used in the paper.
+def _download_smeagol_PWMset():
+    &#34;&#34;&#34;Function to download the curated set of motifs used in the SMEAGOL paper.
         
     Returns:
         df (pandas df): contains matrices
@@ -366,7 +367,7 @@ def download_smeagol_PWMset():
 
 
 def load_smeagol_PWMset(dataset=&#39;representative&#39;):
-    &#34;&#34;&#34;Function to load motifs used in the paper as a pandas DF.
+    &#34;&#34;&#34;Function to download the curated set of motifs used in the SMEAGOL paper and load them as a pandas dataframe.
     
     Args:
         dataset: &#39;full&#39; or &#39;representative&#39;.
@@ -375,7 +376,7 @@ def load_smeagol_PWMset(dataset=&#39;representative&#39;):
         df (pandas df): contains matrices
     
     &#34;&#34;&#34;
-    download_smeagol_PWMset()
+    _download_smeagol_PWMset()
     download_dir = &#39;motifs/smeagol_datasets&#39;
     h5_path = os.path.join(download_dir, &#39;attract_rbpdb_encode_filtered_human_pwms.h5&#39;)
     reps_path = os.path.join(download_dir, &#39;attract_rbpdb_encode_representative_matrices.txt&#39;) 
@@ -395,121 +396,11 @@ def load_smeagol_PWMset(dataset=&#39;representative&#39;):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="smeagol.io.download_attract"><code class="name flex">
-<span>def <span class="ident">download_attract</span></span>(<span>)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to download all motifs and metadata from ATtRACT.</p>
-<h2 id="returns">Returns</h2>
-<p>Motifs are downloaded into the 'motifs/attract' directory.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def download_attract():
-    &#34;&#34;&#34;Function to download all motifs and metadata from ATtRACT.
-        
-    Returns:
-        Motifs are downloaded into the &#39;motifs/attract&#39; directory.
-    
-    &#34;&#34;&#34;
-    download_dir = &#39;motifs/attract&#39;
-    remote_path = &#39;https://attract.cnic.es/attract/static/ATtRACT.zip&#39;
-    local_path = os.path.join(download_dir, &#39;ATtRACT.zip&#39;)
-    print(f&#34;Downloading ATtRACT db into {download_dir}&#34;)
-    if not os.path.exists(download_dir):
-        os.mkdir(download_dir)
-        os.system(&#39;wget  -P &#39; +  download_dir + &#39; &#39; + remote_path)
-        os.system(&#39;unzip &#39; + local_path + &#39; -d &#39; + download_dir)
-    else:
-        print(f&#34;Folder {download_dir} already exists.&#34;)</code></pre>
-</details>
-</dd>
-<dt id="smeagol.io.download_rbpdb"><code class="name flex">
-<span>def <span class="ident">download_rbpdb</span></span>(<span>species='human')</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to download all motifs and metadata from RBPDB.
-Downloads version 1.3.1.</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>species</code></strong> :&ensp;<code>str</code></dt>
-<dd>'human', 'mouse', 'fly' or 'worm'.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>Motifs are downloaded into the 'motifs/rbpdb/{species}' directory.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def download_rbpdb(species=&#39;human&#39;):
-    &#34;&#34;&#34;Function to download all motifs and metadata from RBPDB.
-       Downloads version 1.3.1.
-       
-    Args:
-        species (str): &#39;human&#39;, &#39;mouse&#39;, &#39;fly&#39; or &#39;worm&#39;.
-        
-    Returns:
-        Motifs are downloaded into the &#39;motifs/rbpdb/{species}&#39; directory.
-    
-    &#34;&#34;&#34;
-    download_dir = os.path.join(&#39;motifs/rbpdb&#39;, species)
-    print(f&#34;Downloading RBPDB version 1.3.1 for species {species} into {download_dir}&#34;)
-    if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
-        meta_file = &#39;RBPDB_v1.3.1_&#39; + species + &#39;_2012-11-21_TDT&#39;
-        mat_file = &#39;matrices_&#39; + species
-        url = &#39;http://rbpdb.ccbr.utoronto.ca/downloads&#39;
-        meta_remote_path = os.path.join(url, meta_file + &#39;.zip&#39;)
-        mat_remote_path = os.path.join(url, mat_file + &#39;.zip&#39;)
-        meta_local_path = os.path.join(download_dir, meta_file + &#39;.zip&#39;)
-        mat_local_path = os.path.join(download_dir, mat_file + &#39;.zip&#39;)
-        os.system(&#39;wget -P &#39; +  download_dir + &#39; &#39; + meta_remote_path)
-        os.system(&#39;wget -P &#39; + download_dir + &#39; &#39; + mat_remote_path)
-        os.system(&#39;unzip &#39; + meta_local_path + &#39; -d &#39; + download_dir)
-        os.system(&#39;unzip &#39; + mat_local_path + &#39; -d &#39; + download_dir)
-        os.remove(meta_local_path)
-        os.remove(mat_local_path)
-        print(&#34;Done&#34;)
-    else:
-        print(f&#34;Folder {download_dir} already exists.&#34;)</code></pre>
-</details>
-</dd>
-<dt id="smeagol.io.download_smeagol_PWMset"><code class="name flex">
-<span>def <span class="ident">download_smeagol_PWMset</span></span>(<span>)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Function to download motifs used in the paper.</p>
-<h2 id="returns">Returns</h2>
-<p>df (pandas df): contains matrices</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def download_smeagol_PWMset():
-    &#34;&#34;&#34;Function to download motifs used in the paper.
-        
-    Returns:
-        df (pandas df): contains matrices
-    
-    &#34;&#34;&#34;
-    download_dir = &#39;motifs/smeagol_datasets&#39;
-    remote_paths = [&#39;https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/tree/master/DATA/PWMs/attract_rbpdb_encode_filtered_human_pwms.h5&#39;,
-                    &#39;https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/tree/master/DATA/PWMs/attract_rbpdb_encode_representative_matrices.txt&#39;]
-    print(f&#34;Downloading custom PWM set into {download_dir}&#34;)
-    if not os.path.exists(download_dir):
-        os.mkdir(download_dir)
-        for remote_path in remote_paths:
-            os.system(&#39;wget  -P &#39; +  download_dir + &#39; &#39; + remote_path)
-    else:
-        print(f&#34;Folder {download_dir} already exists.&#34;)</code></pre>
-</details>
-</dd>
 <dt id="smeagol.io.load_attract"><code class="name flex">
 <span>def <span class="ident">load_attract</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to load all motifs and metadata from ATtRACT as a pandas DF.</p>
+<div class="desc"><p>Function to download all motifs and metadata from ATtRACT and load them as a pandas DF.</p>
 <h2 id="returns">Returns</h2>
 <p>df (pandas df): contains matrices</p></div>
 <details class="source">
@@ -517,13 +408,13 @@ Downloads version 1.3.1.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def load_attract():
-    &#34;&#34;&#34;Function to load all motifs and metadata from ATtRACT as a pandas DF.
+    &#34;&#34;&#34;Function to download all motifs and metadata from ATtRACT and load them as a pandas DF.
         
     Returns:
         df (pandas df): contains matrices
     
     &#34;&#34;&#34;
-    download_attract()
+    _download_attract()
     download_dir = &#39;motifs/attract&#39;
     df = pd.read_csv(os.path.join(download_dir, &#39;ATtRACT_db.txt&#39;), sep=&#34;\t&#34;)
     ppms = read_pms_from_file(os.path.join(download_dir, &#39;pwm.txt&#39;), check_lens=True)
@@ -535,7 +426,7 @@ Downloads version 1.3.1.</p>
 <span>def <span class="ident">load_rbpdb</span></span>(<span>species='human', matrix_type='PWM')</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to load all motifs and metadata from RBPDB as a pandas DF.
+<div class="desc"><p>Function to download all motifs and metadata from RBPDB and load them as a pandas DF.
 Downloads version 1.3.1.</p>
 <h2 id="args">Args</h2>
 <dl>
@@ -549,7 +440,7 @@ Downloads version 1.3.1.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def load_rbpdb(species=&#39;human&#39;, matrix_type=&#39;PWM&#39;):
-    &#34;&#34;&#34;Function to load all motifs and metadata from RBPDB as a pandas DF.
+    &#34;&#34;&#34;Function to download all motifs and metadata from RBPDB and load them as a pandas DF.
        Downloads version 1.3.1.
        
     Args:
@@ -560,7 +451,7 @@ Downloads version 1.3.1.</p>
     
     &#34;&#34;&#34;
     # Download
-    download_rbpdb(species=&#39;human&#39;)
+    _download_rbpdb(species=&#39;human&#39;)
     
     # Set paths
     download_dir = os.path.join(&#39;motifs/rbpdb/&#39;, species)
@@ -594,7 +485,7 @@ Downloads version 1.3.1.</p>
 <span>def <span class="ident">load_smeagol_PWMset</span></span>(<span>dataset='representative')</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to load motifs used in the paper as a pandas DF.</p>
+<div class="desc"><p>Function to download the curated set of motifs used in the SMEAGOL paper and load them as a pandas dataframe.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>dataset</code></strong></dt>
@@ -607,7 +498,7 @@ Downloads version 1.3.1.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def load_smeagol_PWMset(dataset=&#39;representative&#39;):
-    &#34;&#34;&#34;Function to load motifs used in the paper as a pandas DF.
+    &#34;&#34;&#34;Function to download the curated set of motifs used in the SMEAGOL paper and load them as a pandas dataframe.
     
     Args:
         dataset: &#39;full&#39; or &#39;representative&#39;.
@@ -616,7 +507,7 @@ Downloads version 1.3.1.</p>
         df (pandas df): contains matrices
     
     &#34;&#34;&#34;
-    download_smeagol_PWMset()
+    _download_smeagol_PWMset()
     download_dir = &#39;motifs/smeagol_datasets&#39;
     h5_path = os.path.join(download_dir, &#39;attract_rbpdb_encode_filtered_human_pwms.h5&#39;)
     reps_path = os.path.join(download_dir, &#39;attract_rbpdb_encode_representative_matrices.txt&#39;) 
@@ -631,26 +522,26 @@ Downloads version 1.3.1.</p>
 <span>def <span class="ident">read_fasta</span></span>(<span>file)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to read sequences from a fasta or fasta.gz file</p>
+<div class="desc"><p>Function to read sequences from a fasta or fasta.gz file.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>file</code></strong> :&ensp;<code>str</code></dt>
 <dd>path to file</dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>records (list): list of seqRecords, one for each sequence in the fasta file.</p></div>
+<p>records (list): list of seqRecord objects, one for each sequence in the fasta file.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def read_fasta(file):
-    &#34;&#34;&#34;Function to read sequences from a fasta or fasta.gz file
+    &#34;&#34;&#34;Function to read sequences from a fasta or fasta.gz file.
     
     Args:
         file (str): path to file
     
     Returns:
-        records (list): list of seqRecords, one for each sequence in the fasta file.
+        records (list): list of seqRecord objects, one for each sequence in the fasta file.
     
     &#34;&#34;&#34;
     records = []
@@ -685,11 +576,11 @@ one column per base (A, C, G, T). If the matrices are instead in the base x posi
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>dirname</code></strong> :&ensp;<code>str</code></dt>
-<dd>folder containing PMs in individual files</dd>
+<dd>path to the folder containing PMs in individual files</dd>
 <dt><strong><code>matrix_type</code></strong> :&ensp;<code>str</code></dt>
-<dd>PWM, PPM (default) or PFM</dd>
+<dd>'PWM', 'PPM' (default) or 'PFM'</dd>
 <dt><strong><code>transpose</code></strong> :&ensp;<code>bool</code></dt>
-<dd>transpose the matrix</dd>
+<dd>If true, transpose the matrix</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <p>pandas dataframe containing PMs</p></div>
@@ -711,9 +602,9 @@ one column per base (A, C, G, T). If the matrices are instead in the base x posi
     `transpose=True`. 
     
     Args:
-        dirname (str): folder containing PMs in individual files
-        matrix_type (str): PWM, PPM (default) or PFM
-        transpose (bool): transpose the matrix
+        dirname (str): path to the folder containing PMs in individual files
+        matrix_type (str): &#39;PWM&#39;, &#39;PPM&#39; (default) or &#39;PFM&#39;
+        transpose (bool): If true, transpose the matrix
     
     Returns:
         pandas dataframe containing PMs
@@ -762,7 +653,7 @@ one column per base (A, C, G, T). If the matrices are instead in the base x posi
 <span>def <span class="ident">read_pms_from_file</span></span>(<span>file, matrix_type='PPM', check_lens=False, transpose=False, delimiter='\t')</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Function to read position matrices from a FASTA-like file in Attract format.</p>
+<div class="desc"><p>Function to read position matrices from a FASTA-like file.</p>
 <p>The input file is expected to follow the format:</p>
 <blockquote>
 <p>Matrix_1_ID
@@ -783,11 +674,11 @@ set <code>check_lens=True</code> to confirm that the loaded PWMs match the expec
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>pm_file</code></strong> :&ensp;<code>str</code></dt>
-<dd>file containing PMs</dd>
+<dd>path to the file containing PMs</dd>
 <dt><strong><code>matrix_type</code></strong> :&ensp;<code>str</code></dt>
-<dd>PWM, PPM (default) or PFM</dd>
+<dd>'PWM', 'PPM' (default) or 'PFM'</dd>
 <dt><strong><code>check_lens</code></strong> :&ensp;<code>bool</code></dt>
-<dd>check that PWM lengths match the lengths provided in the file</dd>
+<dd>check that the matrix lengths match the lengths provided in the file</dd>
 <dt><strong><code>transpose</code></strong> :&ensp;<code>bool</code></dt>
 <dd>transpose the matrices</dd>
 <dt><strong><code>delimiter</code></strong> :&ensp;<code>str</code></dt>
@@ -800,7 +691,7 @@ set <code>check_lens=True</code> to confirm that the loaded PWMs match the expec
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def read_pms_from_file(file, matrix_type=&#39;PPM&#39;, check_lens=False, transpose=False, delimiter=&#39;\t&#39;):
-    &#34;&#34;&#34;Function to read position matrices from a FASTA-like file in Attract format.
+    &#34;&#34;&#34;Function to read position matrices from a FASTA-like file.
     
     The input file is expected to follow the format:
     
@@ -822,9 +713,9 @@ set <code>check_lens=True</code> to confirm that the loaded PWMs match the expec
     set `check_lens=True` to confirm that the loaded PWMs match the expected lengths.
         
     Args:
-        pm_file (str): file containing PMs
-        matrix_type (str): PWM, PPM (default) or PFM
-        check_lens (bool): check that PWM lengths match the lengths provided in the file
+        pm_file (str): path to the file containing PMs
+        matrix_type (str): &#39;PWM&#39;, &#39;PPM&#39; (default) or &#39;PFM&#39;
+        check_lens (bool): check that the matrix lengths match the lengths provided in the file
         transpose (bool): transpose the matrices
         delimiter (str): The string used to separate values in the file
     
@@ -891,7 +782,8 @@ set <code>check_lens=True</code> to confirm that the loaded PWMs match the expec
 <div class="desc"><p>Function to write sequences to a fasta or fasta.gz file.</p>
 <h2 id="params">Params</h2>
 <p>records (list): list of seqRecord objects to write.
-file (str): path to file</p>
+file (str): path to file
+gz (bool): If true, compress the output file with gzip.</p>
 <h2 id="returns">Returns</h2>
 <p>Writes records to the file</p></div>
 <details class="source">
@@ -904,6 +796,7 @@ file (str): path to file</p>
     Params:
         records (list): list of seqRecord objects to write.
         file (str): path to file
+        gz (bool): If true, compress the output file with gzip.
     
     Returns:
         Writes records to the file
@@ -936,10 +829,7 @@ file (str): path to file</p>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="smeagol.io.download_attract" href="#smeagol.io.download_attract">download_attract</a></code></li>
-<li><code><a title="smeagol.io.download_rbpdb" href="#smeagol.io.download_rbpdb">download_rbpdb</a></code></li>
-<li><code><a title="smeagol.io.download_smeagol_PWMset" href="#smeagol.io.download_smeagol_PWMset">download_smeagol_PWMset</a></code></li>
+<ul class="two-column">
 <li><code><a title="smeagol.io.load_attract" href="#smeagol.io.load_attract">load_attract</a></code></li>
 <li><code><a title="smeagol.io.load_rbpdb" href="#smeagol.io.load_rbpdb">load_rbpdb</a></code></li>
 <li><code><a title="smeagol.io.load_smeagol_PWMset" href="#smeagol.io.load_smeagol_PWMset">load_smeagol_PWMset</a></code></li>

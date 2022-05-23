@@ -3,16 +3,17 @@ import numpy as np
 import itertools
 
 from .encode import SeqGroups, one_hot_dict, one_hot_encode
+from .utils import get_tiling_windows_over_genome
 
 
 def score_site(pwm, seq, position_wise=False):
-    """Function to score a binding site sequence.
+    """Function to score a binding site sequence using a PWM.
     
      Args:
-        pwm (np.array): PWM weights
-        seq (str): sequence the same length as the PWM.
+        pwm (np.array): Numpy array containing the PWM weights
+        seq (str): A sequence the same length as the PWM.
      Returns:
-        score (float): PWM score
+        score (float): PWM match score
     
     """
     seq = one_hot_encode(seq, rc=False)
@@ -24,20 +25,20 @@ def score_site(pwm, seq, position_wise=False):
         return np.sum(position_wise_scores)
     
 
-def score_base(pwm, base, pos):
-    """Function to get score for a particular base in a PWM.
+def _score_base(pwm, base, pos):
+    """Function to get the match score for a particular base using a PWM.
     
     Args:
         pwm (np.array): PWM weights
         base (str): base to score
-        pos (int): relative position of base in the motif
+        pos (int): The position in the PWM to match with the base.
     Returns:
         score (float): score for base
     """
     return np.sum(np.multiply(pwm[pos, :], one_hot_dict[base]))
 
 
-def locate_sites(encoding, model, thresholded, scores=None):
+def _locate_sites(encoding, model, thresholded, scores=None):
     """ Function to locate potential binding sites given model predictions.
     
     Args:
@@ -68,8 +69,8 @@ def locate_sites(encoding, model, thresholded, scores=None):
     return sites
 
 
-def bin_sites_by_score(encoding, model, thresholded, scores, bins):
-    """ Function to locate potential binding sites and bin them based on their score.
+def _bin_sites_by_score(encoding, model, thresholded, scores, bins):
+    """ Function to locate potential binding sites and bin them based on their PWM match score.
     
     Args:
         encoding (SeqEncoding): SeqEncoding object
@@ -97,7 +98,7 @@ def bin_sites_by_score(encoding, model, thresholded, scores, bins):
     return result
 
                        
-def count_sites(encoding, model, thresholded):
+def _count_sites(encoding, model, thresholded):
     """Function to count the number of matches per PWM.
         
     Args:
@@ -126,7 +127,7 @@ def count_sites(encoding, model, thresholded):
         return result
 
 
-def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False, seq_batch=0):
+def _find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False, seq_batch=0):
     """Function to predict binding sites on encoded sequence(s).
     
     Args:
@@ -152,13 +153,13 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False,
         score = True
         assert type(threshold) == np.ndarray
         thresholded, scores = model.predict_with_threshold(encoding.seqs, min(threshold), score, seq_batch)
-        output['binned_counts'] = bin_sites_by_score(encoding, model, thresholded, scores, threshold)
+        output['binned_counts'] = _bin_sites_by_score(encoding, model, thresholded, scores, threshold)
     else:
         thresholded, scores = model.predict_with_threshold(encoding.seqs, threshold, score, seq_batch)
     if 'sites' in outputs:
-        output['sites'] = locate_sites(encoding, model, thresholded, scores)
+        output['sites'] = _locate_sites(encoding, model, thresholded, scores)
     if ('counts'  in outputs) or ('stats' in outputs):
-        counts = count_sites(encoding, model, thresholded)
+        counts = _count_sites(encoding, model, thresholded)
     if 'counts' in outputs:
         output['counts'] = counts
     if 'stats' in outputs:
@@ -169,7 +170,7 @@ def find_sites_seq(encoding, model, threshold, outputs = ['sites'], score=False,
     return output
 
 
-def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False, seq_batch=0):
+def _find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=False, combine_seqs=False, sep_ids=False, seq_batch=0):
     """Function to predict binding sites on class SeqGroups.
     
     Args:
@@ -198,7 +199,7 @@ def find_sites_in_groups(encoding, model, threshold, outputs=['sites'], score=Fa
         if 'counts' not in outputs:
             inter_outputs.append('counts')
         inter_outputs.remove('stats')
-    output_per_seq = [find_sites_seq(seq, model, threshold, inter_outputs, score=score, seq_batch=seq_batch) for seq in encoding.seqs]
+    output_per_seq = [_find_sites_seq(seq, model, threshold, inter_outputs, score=score, seq_batch=seq_batch) for seq in encoding.seqs]
     # Concatenate binding sites
     output = {}
     for key in output_per_seq[0].keys():
@@ -256,57 +257,13 @@ def scan_sequences(seqs, model, threshold, sense='+', rcomp='none', outputs=['si
     # Encode the sequences
     encoded = SeqGroups(seqs, rcomp=rcomp, sense=sense, group_by=group_by)
     # Find sites
-    preds = find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
+    preds = _find_sites_in_groups(encoded, model, threshold=threshold, outputs=outputs, score=score, combine_seqs=combine_seqs, sep_ids=sep_ids, seq_batch=seq_batch)
     return preds
     
 
 # Analysis in windows
 
-def get_tiling_windows_over_record(record, width, shift):
-    """Function to get tiling windows over a sequence.
-    
-    Args:
-        record (SeqRecord): SeqRecord object
-        width (int): width of tiling windows
-        shift (int): shift between successive windows
-    
-    Returns:
-        windows (pd.DataFrame): windows covering input sequence
-        
-    """
-    # Get start positions
-    starts = list(range(0, len(record), shift))
-    # Get end positions
-    ends = [np.min([x + width, len(record)]) for x in starts]
-    # Add sequence ID
-    idxs = np.tile(record.id, len(starts))
-    # Combine
-    windows = pd.DataFrame({'id':idxs, 'start':starts, 'end':ends})
-    return windows
-
-
-def get_tiling_windows_over_genome(genome, width, shift=None):
-    """Function to get tiling windows over a genome.
-        
-    Args:
-        genome (list): list of SeqRecord objects
-        width (int): width of tiling windows
-        shift (int): shift between successive windows. By default the same as width.
-    
-    Returns:
-        windows (pd.DataFrame): windows covering all sequences in genome
-        
-    """
-    if shift is None:
-        shift = width
-    if len(genome) == 1:
-        windows = get_tiling_windows_over_record(genome[0], width, shift)
-    else:
-        windows = pd.concat([get_tiling_windows_over_record(record, width, shift) for record in genome])
-    return windows
-
-
-def count_in_window(window, sites, matrix_id):
+def _count_in_window(window, sites, matrix_id=None):
     """Function to calculate count of PWMs in subsequence.
     
     Args:
@@ -318,8 +275,10 @@ def count_in_window(window, sites, matrix_id):
         count (int): Number of binding sites for given PWM in selected window.
 
     """
-    count = len(sites[(sites.Matrix_id==matrix_id) & (sites.id==window.id) & (sites.start >= window.start) & (sites.start < window.end)])
-    return count
+    sites_to_count = sites[(sites.id==window.id) & (sites.start >= window.start) & (sites.start < window.end)]
+    if matrix_id is not None:
+        sites_to_count = sites_to_count[(sites_to_count.Matrix_id==matrix_id)]
+    return len(sites_to_count)
 
 
 def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
@@ -337,6 +296,6 @@ def count_in_sliding_windows(sites, genome, matrix_id, width, shift=None):
         
     """
     windows = get_tiling_windows_over_genome(genome, width, shift)
-    windows['count'] = windows.apply(count_in_window, axis=1, args=(sites, matrix_id))
+    windows['count'] = windows.apply(_count_in_window, axis=1, args=(sites, matrix_id))
     windows.reset_index(inplace=True, drop=True)
     return windows
