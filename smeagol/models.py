@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 class PWMModel:
     """Class to contain a convolutional model used for PWM scanning.
     
-    Attributes:
+    Parameters:
         Matrix_ids (np.array): Numpy array containing the IDs of all the PWMs encoded in the model.
         widths (np.array): Numpy array containing the widths of all the PWMs encoded in the model.
         max_scores (np.array): Numpy array containing the maximum possible score for each PWM encoded in the model.
