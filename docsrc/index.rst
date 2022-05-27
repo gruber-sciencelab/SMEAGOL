@@ -1,8 +1,3 @@
-.. SMEAGOL documentation master file, created by
-   sphinx-quickstart on Thu May 26 20:50:03 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to SMEAGOL's documentation!
 ===================================
 
@@ -10,7 +5,7 @@ Welcome to SMEAGOL's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   smeagol
 
 Indices and tables
 ==================
