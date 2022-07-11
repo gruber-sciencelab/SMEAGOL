@@ -86,7 +86,7 @@ def entropy(probs):
 
 
 def position_wise_ic(probs):
-    """Function to calculate the information content (IC) of each position in a PPM. The IC for a specific position is calculated using the formula: IC = 2 - sum(p*log2(p)), assuming a background probability of 0.25 for each of the 4 bases.
+    """Function to calculate the information content (IC) of each position in a PPM. The IC for a specific position is calculated using the formula: IC = 2 + sum(p*log2(p)), assuming a background probability of 0.25 for each of the 4 bases.
  
     Args:
         probs (np.array): Numpy array containing PPM probability values. 
