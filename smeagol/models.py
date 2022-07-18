@@ -20,11 +20,6 @@ class PWMModel:
         max_scores (np.array): Numpy array containing the maximum possible score for each PWM encoded in the model.
         channels (int): Number of PWMs encoded in the model.
         max_width (int): Width of the longest PWM encoded in the model.
-    
-    Methods:
-        set_model_weights: Encode PWM weights in the model.
-        predict: Scan an integer encoded sequence with the model.
-        predict_with_threshold: Scan an integer encoded sequence with the model and return matches with score above a specified threshold.
         
     """
     def __init__(self, pwm_df):
