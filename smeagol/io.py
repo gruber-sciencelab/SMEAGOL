@@ -215,27 +215,41 @@ def _download_rbpdb(species='human'):
        Downloads version 1.3.1.
        
     Args:
-        species (str): 'human', 'mouse', 'fly' or 'worm'.
+        species (str): 'H.sapiens', 'M.musculus', 'D.melanogaster' or 'C.elegans'.
         
     Returns:
         Motifs are downloaded into the 'motifs/rbpdb/{species}' directory.
     
     """
-    download_dir = os.path.join('motifs/rbpdb', species)
+    download_dir = os.path.join('motifs', 'rbpdb', species)
     print(f"Downloading RBPDB version 1.3.1 for species {species} into {download_dir}")
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
-        meta_file = 'RBPDB_v1.3.1_' + species + '_2012-11-21_TDT'
-        mat_file = 'matrices_' + species
+        
+        # Replace species name with code
+        rbpdb_species_codes = {'H.sapiens': 'human',
+                           'M.musculus':'mouse',
+                           'D.melanogaster':'fly',
+                           'C.elegans':'worm'}
+        species_code = rbpdb_species_codes[species]
+        
+        meta_file = 'RBPDB_v1.3.1_{}_2012-11-21_TDT'.format(species_code)
+        mat_file = 'matrices_{}'.format(species_code) 
         url = 'http://rbpdb.ccbr.utoronto.ca/downloads'
+
+        # Get remote paths
         meta_remote_path = os.path.join(url, meta_file + '.zip')
         mat_remote_path = os.path.join(url, mat_file + '.zip')
         meta_local_path = os.path.join(download_dir, meta_file + '.zip')
         mat_local_path = os.path.join(download_dir, mat_file + '.zip')
-        os.system('wget -P ' +  download_dir + ' ' + meta_remote_path)
-        os.system('wget -P ' + download_dir + ' ' + mat_remote_path)
-        os.system('unzip ' + meta_local_path + ' -d ' + download_dir)
-        os.system('unzip ' + mat_local_path + ' -d ' + download_dir)
+
+        # Download
+        os.system('wget -P {} {}'.format(download_dir, meta_remote_path))
+        os.system('wget -P {} {}'.format(download_dir, mat_remote_path))
+        os.system('unzip {} -d {}'.format(meta_local_path, download_dir))
+        os.system('unzip {} -d {}'.format(mat_local_path, download_dir))
+        
+        # Remove zipped files
         os.remove(meta_local_path)
         os.remove(mat_local_path)
         print("Done")
@@ -262,10 +276,10 @@ def load_rbpdb(species='H.sapiens', matrix_type='PWM'):
     species_code = rbpdb_species_codes[species]
     
     # Download
-    _download_rbpdb(species = species_code)
+    _download_rbpdb(species = species)
     
     # Set paths
-    download_dir = os.path.join('motifs/rbpdb/', species)
+    download_dir = os.path.join('motifs', 'rbpdb', species)
     if matrix_type == 'PWM':
         mat_dir = os.path.join(download_dir, 'PWMDir')
     elif matrix_type == 'PFM':
