@@ -243,19 +243,26 @@ def _download_rbpdb(species='human'):
         print(f"Folder {download_dir} already exists.")
         
         
-def load_rbpdb(species='human', matrix_type='PWM'):
+def load_rbpdb(species='H.sapiens', matrix_type='PWM'):
     """Function to download all motifs and metadata from RBPDB and load them as a pandas DF.
        Downloads version 1.3.1.
        
     Args:
-        species (str): 'human', 'mouse', 'fly' or 'worm'.
+        species (str): 'H.sapiens', 'M.musculus', 'D.melanogaster' or 'C.elegans'.
         
     Returns:
         df (pandas df): contains matrices
     
     """
+    # Replace species name with code
+    rbpdb_species_codes = {'H.sapiens': 'human',
+                           'M.musculus':'mouse',
+                           'D.melanogaster':'fly',
+                           'C.elegans':'worm'}
+    species_code = rbpdb_species_codes[species]
+    
     # Download
-    _download_rbpdb(species='human')
+    _download_rbpdb(species = species_code)
     
     # Set paths
     download_dir = os.path.join('motifs/rbpdb/', species)
@@ -270,13 +277,14 @@ def load_rbpdb(species='human', matrix_type='PWM'):
     df = read_pms_from_dir(mat_dir, matrix_type=matrix_type, transpose=True)
     
     # Read metadata
-    rbp = pd.read_csv(os.path.join(download_dir, 
-            'RBPDB_v1.3.1_proteins_' + species + '_2012-11-21.tdt'), 
-            header=None,  sep="\t", usecols=(0,4), names=('Prot_id', 'Gene_name'),
-                 dtype='str')
-    rbp_pwm = pd.read_csv(os.path.join(download_dir, 'RBPDB_v1.3.1_protExp_' + species + '_2012-11-21.tdt'), 
-            header=None,  sep="\t", usecols=(0,1), names=('Prot_id', 'Matrix_id'),
-                 dtype='str')
+    rbp = pd.read_csv(
+        os.path.join(download_dir, 'RBPDB_v1.3.1_proteins_{}_2012-11-21.tdt'.format(species_code)), 
+        header=None,  sep="\t", usecols=(0,4), names=('Prot_id', 'Gene_name'),
+        dtype='str')
+    rbp_pwm = pd.read_csv(
+        os.path.join(download_dir, 'RBPDB_v1.3.1_protExp_{}_2012-11-21.tdt'.format(species_code)),
+        header=None,  sep="\t", usecols=(0,1), names=('Prot_id', 'Matrix_id'),
+        dtype='str')
 
     # Merge
     rbp = rbp.merge(rbp_pwm, on='Prot_id')[['Matrix_id', 'Gene_name']]
