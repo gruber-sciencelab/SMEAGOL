@@ -60,7 +60,7 @@ from smeagol.visualize import plot_background
 
 ## Modules
 
-The following sub-modules are included:
+The following modules are included:
 
 - smeagol.aggregate: Aggregate results across different genomes.
 - smeagol.encode: Encoding nucleic acid sequences into numeric form for PWM scanning.
@@ -82,4 +82,4 @@ See the [vignette](vignette_1.ipynb) for an example workflow using SMEAGOL.
 
 ## Citation
 
-Please cite our [preprint](https://www.biorxiv.org/content/10.1101/2021.12.02.470930v1): Lal, A., Ferrarini, M.G. and Gruber, A.J., 2021. Investigating the human host-ssRNA virus interaction landscape using the SMEAGOL toolbox. bioRxiv.
+Please cite our [publication](https://www.mdpi.com/1999-4915/14/7/1436): Lal, A., Galvao Ferrarini, M., & Gruber, A. J. (2022). Investigating the Human Host—ssRNA Virus Interaction Landscape Using the SMEAGOL Toolbox. Viruses, 14(7), 1436.
