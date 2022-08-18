@@ -210,7 +210,7 @@ def read_pms_from_dir(dirname, matrix_type='PPM', transpose=False):
     return pd.DataFrame({'Matrix_id':pm_ids, value_col:pms})
 
 
-def _download_rbpdb(species='human'):
+def _download_rbpdb(species='H.sapiens'):
     """Function to download all motifs and metadata from RBPDB.
        Downloads version 1.3.1.
        
@@ -263,6 +263,7 @@ def load_rbpdb(species='H.sapiens', matrix_type='PWM'):
        
     Args:
         species (str): 'H.sapiens', 'M.musculus', 'D.melanogaster' or 'C.elegans'.
+        matrix_type (str): 'PWM' or 'PFM'
         
     Returns:
         df (pandas df): contains matrices
@@ -349,13 +350,14 @@ def _download_smeagol_PWMset():
     
     """
     download_dir = 'motifs/smeagol_datasets'
-    remote_paths = ['https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/tree/master/DATA/PWMs/attract_rbpdb_encode_filtered_human_pwms.h5',
-                    'https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/tree/master/DATA/PWMs/attract_rbpdb_encode_representative_matrices.txt']
+    remote_path = 'https://github.com/gruber-sciencelab/VirusHostInteractionAtlas/blob/main/DATA/PWMs/attract_rbpdb_encode_filtered_human_pwms.h5?raw=true'
+    local_path = os.path.join(download_dir, 'attract_rbpdb_encode_filtered_human_pwms.h5?raw=true')
+    local_dest_path = os.path.join(download_dir, 'attract_rbpdb_encode_filtered_human_pwms.h5')
     print(f"Downloading custom PWM set into {download_dir}")
     if not os.path.exists(download_dir):
         os.mkdir(download_dir)
-        for remote_path in remote_paths:
-            os.system('wget  -P ' +  download_dir + ' ' + remote_path)
+        os.system('wget  -P ' +  download_dir + ' ' + remote_path)
+        os.rename(local_path, local_dest_path)
     else:
         print(f"Folder {download_dir} already exists.")
 
@@ -373,14 +375,7 @@ def load_smeagol_PWMset(dataset='representative'):
     _download_smeagol_PWMset()
     download_dir = 'motifs/smeagol_datasets'
     h5_path = os.path.join(download_dir, 'attract_rbpdb_encode_filtered_human_pwms.h5')
-    reps_path = os.path.join(download_dir, 'attract_rbpdb_encode_representative_matrices.txt') 
     df = pd.read_hdf(h5_path, 'data')
     if dataset == 'representative':
-        reps = [x.strip() for x in open(reps_path)]
-        df = df[df.Matrix_id.isin(reps)]
+        df = df[df.representative].reset_index(drop=True)
     return df
-
-    
-
-
-
