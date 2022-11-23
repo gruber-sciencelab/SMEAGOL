@@ -43,8 +43,9 @@ cd tests
 pytest
 ```
 
-### 5. Add SMEAGOL kernel to Ipython (if running SMEAGOL in Jupyter notebooks)
+### 5. Install jupyter lab and add SMEAGOL kernel to Ipython (if running SMEAGOL in Jupyter notebooks)
 ```
+pip install jupyterlab 
 python -m ipykernel install --user --name=SMEAGOL --display-name='Python 3.7 (SMEAGOL)'
 ```
 
