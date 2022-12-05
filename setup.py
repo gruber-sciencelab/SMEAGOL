@@ -12,18 +12,23 @@ from setuptools import setup
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Get path to requirements file
-requirements_path = os.path.abspath(os.path.join(current_dir, 'requirements.txt'))
+requirements_path = os.path.abspath(os.path.join(
+    current_dir, "requirements.txt"))
 
 # Get required packages
-required_packages = [line.strip() for line in open(requirements_path, 'r') if
-             line.strip() and not line.lstrip().startswith('#')]
+required_packages = [
+    line.strip()
+    for line in open(requirements_path, "r")
+    if line.strip() and not line.lstrip().startswith("#")
+]
 
 # Set up SMEAGOL
-setup(name='SMEAGOL',
-      version='0.0.1',
-      install_requires=required_packages,
-      include_package_data=True,
-      packages=['smeagol'],
-      python_requires='>=3.7, !=3.9',
-      platforms=['any'],
-      )
+setup(
+    name="SMEAGOL",
+    version="0.0.1",
+    install_requires=required_packages,
+    include_package_data=True,
+    packages=["smeagol"],
+    python_requires=">=3.7, !=3.9",
+    platforms=["any"],
+)
