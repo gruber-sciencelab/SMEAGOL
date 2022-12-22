@@ -15,3 +15,4 @@ sphinx>=5.0.0
 statsmodels>=0.12.2
 tensorflow>=2.5.0
 tables>=3.6.1
+wheel
