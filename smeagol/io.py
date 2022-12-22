@@ -8,7 +8,6 @@ import os
 
 # Biopython imports
 from Bio import SeqIO
-import numpy as np #THIS IS A TEST
 
 # Smeagol imports
 from .matrices import check_pfm, check_pwm, check_ppm
