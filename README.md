@@ -24,11 +24,13 @@ conda activate SMEAGOL
 git clone https://github.com/gruber-sciencelab/SMEAGOL && cd SMEAGOL
 ```
 
-### 2. Install ghostscript if needed
+### 2. Install dependencies
 
 Some of SMEAGOL's visualization functions require [ghostscript](https://www.ghostscript.com/). If you do not have ghostscript installed, please see the link for installation instructions or use `conda install -c conda-forge ghostscript`. (Installing ghostscript via pip leads to an error).
 
-### 3. Install SMEAGOL along with pip dependencies
+If you do not have Cython installed, please install Cython following the instructions here: https://cython.readthedocs.io/en/latest/src/quickstart/install.html 
+
+### 3. Install SMEAGOL
 ```
 pip install .
 ```

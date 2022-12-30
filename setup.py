@@ -24,7 +24,7 @@ required_packages = [
 
 # Set up SMEAGOL
 setup(
-    name="SMEAGOL",
+    name="smeagol-bio",
     version="0.1.0",
     install_requires=required_packages,
     include_package_data=True,
