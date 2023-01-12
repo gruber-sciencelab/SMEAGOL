@@ -10,8 +10,11 @@ import os
 from Bio import SeqIO
 
 # Smeagol imports
-from .matrices import check_pfm, check_pwm, check_ppm
+from smeagol.matrices import check_pfm, check_pwm, check_ppm, pfm_to_ppm, ppm_to_pwm
 
+# Pyjaspar
+from pyjaspar import jaspardb
+import re
 
 def read_fasta(file):
     """Function to read sequences from a fasta or fasta.gz file.
@@ -426,4 +429,175 @@ def load_smeagol_PWMset(dataset="representative"):
     df = pd.read_hdf(h5_path, "data")
     if dataset == "representative":
         df = df[df.representative].reset_index(drop=True)
+    return df
+
+def fetch_jaspar_PFMs(download_path='motifs/JASPAR2022', species='H.sapiens'):
+    """Function to fetch transcription factor (TF) binding profiles stored as position frequency matrices (PFMs) from the 9th release JASPAR20022 and write them as text files.
+
+    Args:
+        species (str): 'H.sapiens': 9606, 'M.musculus': 10090, 'D.melanogaster': 7227 or 'C.elegans': 6239.
+        
+    Returns:
+        Text files with motif matrix IDs, motif name and position frequency matrices (PFMs)
+    
+    """
+    # Set path 
+    download_dir = os.path.join(download_path, species.replace('.', '_'), 'PFMs')
+    # Provie Jaspar db release
+    jdb_obj = jaspardb(release='JASPAR2022')
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+        # Select motifs based on species
+        if species == 'H.sapiens':
+            motifs = jdb_obj.fetch_motifs(
+            collection = 'CORE',
+            species = ['9606'])
+            print(f"You selected to fetch {species} PFMs and {len(motifs)} were retrieved in total from JASPAR20022 database")
+        elif species == 'M.musculus':
+            motifs = jdb_obj.fetch_motifs(
+            collection = 'CORE',
+            species = ['10090'])
+            print(f"You selected to fetch {species} PFMs and {len(motifs)} were retrieved in total from JASPAR20022 database")
+        elif species == 'D.melanogaster':
+            motifs = jdb_obj.fetch_motifs(
+            collection = 'CORE',
+            species = ['7227'])
+            print(f"You selected to fetch {species} PFMs and {len(motifs)} were retrieved in total from JASPAR20022 database")
+        elif species == 'C.elegans':
+            motifs = jdb_obj.fetch_motifs(
+            collection = 'CORE',
+            species = ['6239'])
+            print(f"You selected to fetch {species} PFMs and {len(motifs)} were retrieved in total from JASPAR20022 database")
+        else:
+            print(f"You selected to fetch {species} PFMs that are not supported or there is a typo in species name")
+        # Write each motif as a separate file
+        for motif in motifs:
+            # Replace '::' and '-' in motif names with underscore ('_')
+            motif.name = motif.name.replace('::', '_').replace('-', '_')
+            # Replace '.' in motif matrix ids with underscore ('_')
+            motif.matrix_id = motif.matrix_id.replace('.', '_')
+            # Write each motif as a separate file
+            with open(os.path.join(download_dir, f"{motif.name}_{motif.matrix_id}"), 'a') as myfile:
+                myfile.write(">")
+                myfile.write(motif.matrix_id)
+                myfile.write(" ")
+                myfile.write(motif.name)
+                myfile.write("\n")
+                myfile.write(str(motif.counts))  
+    else:
+        print(f"Folder {download_dir} already exists.")
+
+
+def pfm_to_motevo_format(working_dir='motifs/JASPAR2022', species = 'H.sapiens', geneID_matrixID_delim = '_MA'):
+    """Function to convert JASPAR pfms to ppms in Motevo format (PPM * 100) 
+
+    Args:
+        species (str): 'H.sapiens': 9606, 'M.musculus': 10090, 'D.melanogaster': 7227 or 'C.elegans': 6239.
+        
+    Returns:
+        Text files with motif matrix IDs, motif name and position frequency matrices (PPMs) in Motevo format
+        Table with Gene_name, Matrix_id, PFMs, PPMs, and PPMs in Motevo format
+    
+    """
+    # Set the paths to downladed Jaspar PFMs (download_dir) and writing dir for PPMs in Motevo format  
+    download_dir = os.path.join(working_dir, species.replace('.', '_'), 'PFMs')
+    writing_dir = os.path.join(working_dir, species.replace('.', '_'), 'PPMs_Motevo')
+    # Create an empty object to count PPMs with fractional values
+    pfms_with_fractional_values = []
+    ppms_not_valid = []
+    # Create empty df
+    df = pd.DataFrame()
+    if not os.path.exists(writing_dir):
+        os.makedirs(writing_dir)
+        # List PFM files
+        files = sorted(os.listdir(download_dir))
+        if len(files) > 1:
+            # Print how many files will be converted
+            print (f"There are {len(files)} files to convert. I start my job")
+            for file in files:
+                # Open and read files
+                open_file = open(os.path.join(download_dir, file), "r")
+                text_data = open_file.read().split("\n")
+                text_data = list(filter(None, text_data))
+                print(f"checking file '{file}' for conversion")
+                # Check each element of the list and its position: the header ">", numeration and 
+                # nucleotides 'A', 'C', 'G', 'T'.
+                if text_data[0].startswith(">") and " ".join(text_data[1].split()).startswith("0") \
+                and text_data[2].startswith("A") and text_data[3].startswith("C") and \
+                text_data[4].startswith("G") and text_data[5].startswith("T"):
+                    print("1st line: header is valid")
+                    print("2nd line: numeration starts from 0: OK")
+                    print("3rd line: starts with 'A': OK")
+                    print("4th line: starts with 'C': OK")
+                    print("5th line: starts with 'G': OK")
+                    print("6th line: starts with 'T': OK")
+                    print("file is checked, format is valid")
+                else:
+                    raise ValueError ("PFM is not valid. You should visually inspect this motif. I quit :(")
+                # Extract values for 'A', 'C', 'G', 'T' at each position and edit format for numpy array
+                list_of_values = []
+                for i in text_data:
+                    if any(i.startswith(x) for x in ["A", "C", "G", "T"]):
+                        list_of_values.append(re.sub("[A:]|[C:]|[G:]|[T:]", "", i).split())
+                list_of_values
+                # Convert list to a data frame (df)
+                ACGT_df = pd.DataFrame(list_of_values)
+                # Convert df into a numpy array
+                ACGT_array = pd.DataFrame.to_numpy(pd.DataFrame(ACGT_df))
+                # Transpose numpy array to bring it to the format for the function 'pfm_to_ppm'
+                ACGT_array_transposed = np.transpose(ACGT_array)
+                # Convert characters into numbers
+                ACGT_array_transposed = ACGT_array_transposed.astype(np.float)
+                # Check if array contains fractional values (as a rule must not)
+                try:
+                    check_pfm(ACGT_array_transposed)
+                except ValueError:
+                    print(f"Oh no! Input array contains fractional values. I will convert into integers \
+                    but keep in mind, '{file}' PFM may have some problems")
+                    pfms_with_fractional_values.append(file)
+                    ACGT_array_transposed=ACGT_array_transposed.round(decimals=0, out=None)
+                # Run pfm_to_ppm function on prepared array; add pseudocount 0.1/100
+                # This is required because of Motevo format: pfm values are multiplied by 100
+                ACGT_PPM = pfm_to_ppm(ACGT_array_transposed, pseudocount = 0.1/100)
+                # Check if ppm is valid
+                try:
+                    check_ppm(ACGT_PPM)
+                except ValueError:
+                    print(f"Oh no! converted ppms may not be valid. I will report them")
+                    ppms_not_valid.append(file)
+                # Append data about each motif to a data frame
+                df = df.append({
+                    'Matrix_id': file[file.index(geneID_matrixID_delim):].replace('_','', 1),
+                    'Gene_name': file[:file.index(geneID_matrixID_delim)],
+                    'PFM': ACGT_array_transposed,
+                    'PPM': ACGT_PPM,
+                    'PPM_Motevo': ACGT_PPM*100,
+                    'weights': ppm_to_pwm(ACGT_PPM)},
+                    ignore_index= True)
+                # Write files
+                with open(os.path.join(writing_dir, file), 'a') as myfile:
+                    myfile.write("//")
+                    myfile.write("\n")
+                    myfile.write("NA ")
+                    myfile.write(file)
+                    myfile.write("\n")
+                    myfile.write("\t")
+                    myfile.write("A")
+                    myfile.write("\t")
+                    myfile.write("C")
+                    myfile.write("\t")
+                    myfile.write("G")
+                    myfile.write("\t")
+                    myfile.write("T")
+                    myfile.write("\n")
+                    for i, line in enumerate((ACGT_PPM*100).round(decimals=3, out=None)):
+                        line_fin = str(i+1).zfill(2) + "\t" + np.array2string(line).strip("[]")
+                        line_fin = " ".join(line_fin.split())
+                        myfile.write(line_fin.replace(' ', '\t'))
+                        myfile.write("\n")
+                    myfile.write("//")
+        else: print(f"There are no files for conversion, check your input folder")
+    else: print(f"Folder {writing_dir} already exists.")
+    print(f"I'm done. The following PFMs can be problematic: {pfms_with_fractional_values}, \
+    there is/are {len(pfms_with_fractional_values)} of them. There are {len(ppms_not_valid)} ppms found to be not valid")
     return df
