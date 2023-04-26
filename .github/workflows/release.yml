@@ -5,7 +5,7 @@ on:
     types: [created]
 
 jobs:
-  deploy:
+  deploy-PyPI:
     runs-on: ubuntu-20.04
 
     steps:
@@ -22,3 +22,14 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         twine upload dist/*
+
+  publish-Conda:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: publish-to-conda
+      uses: maxibor/conda-package-publish-action@v1.1
+      with:
+        subDir: '.'
+        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
