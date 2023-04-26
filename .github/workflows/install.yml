@@ -34,7 +34,7 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install boa conda-verify -c conda-forge
-          conda mambabuild . -c bioconda conda-forge
+          conda mambabuild . -c bioconda -c conda-forge
 
       - name: Activate the real base env and install conda package
         shell: bash -l {0}
