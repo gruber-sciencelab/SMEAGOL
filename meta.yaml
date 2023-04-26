@@ -32,10 +32,10 @@ requirements:
     - scikit-learn>=0.24.2
     - scipy>=1.7.0
     - seaborn>=0.11.1
-    - seqlogo>=5.29.8
+    - seqlogo
     - setuptools>=57.0.0
     - sphinx>=5.0.0
     - statsmodels>=0.12.2
     - tensorflow>=2.5.0
-    - tables>=3.6.1
-    - ushuffle>=1.1.2
+    - tables
+    - ushuffle
