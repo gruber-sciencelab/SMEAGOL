@@ -34,11 +34,11 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install boa conda-verify -c conda-forge
-          conda mambabuild . -c conda-forge
+          conda mambabuild . -c bioconda conda-forge
 
       - name: Activate the real base env and install conda package
         shell: bash -l {0}
         run: |
           conda deactivate
-          conda install -c /usr/share/miniconda3/envs/test/conda-bld/noarch smeagol-bio -c conda-forge -y
+          conda install -c /usr/share/miniconda3/envs/test/conda-bld/noarch smeagol-bio -c bioconda -c conda-forge -y
           conda list
