@@ -27,7 +27,7 @@ def ppm_logo(probs, title="", figsize=(5,2)):
     # Calculate IC
     ic = position_wise_ic(probs)
     # Scale probabilities by IC
-    probs_scaled = ppm*np.expand_dims(ic, 1)
+    probs_scaled = probs*np.expand_dims(ic, 1)
     # Create figure and axes
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
@@ -38,7 +38,8 @@ def ppm_logo(probs, title="", figsize=(5,2)):
     plot_weights_given_ax(ax=ax, array=probs_scaled,
         height_padding_factor=0.1,
         length_padding=0.01,
-        subticks_frequency=1)
+        subticks_frequency=1,
+        highlight={})
     plt.show()
 
 

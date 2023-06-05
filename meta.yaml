@@ -15,6 +15,7 @@ build:
 channels:
   - bioconda
   - conda-forge
+  - anaconda
 
 requirements:
   host:
