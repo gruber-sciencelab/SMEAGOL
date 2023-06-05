@@ -41,7 +41,8 @@ def shuffle_records(records, simN, simK=2, out_file=None, seed=1):
         seq = record.seq.__str__()
         # Shuffle
         if simK == 2:
-            new_seqs = dinuc_shuffle(seq, num_shufs=simN, rng=np.random.RandomState(seed))
+            new_seqs = dinuc_shuffle(seq, num_shufs=simN,
+                                     rng=np.random.RandomState(seed))
         elif simK == 1:
             random.seed(seed)
             new_seqs = []
@@ -54,7 +55,9 @@ def shuffle_records(records, simN, simK=2, out_file=None, seed=1):
 
         # Convert to seqrecord format
         for i, new_seq in enumerate(new_seqs):
-            shuf_records.append(SeqRecord(Seq(new_seq), id="background_seq_{0:d}".format(i), name = record.id))
+            shuf_records.append(SeqRecord(Seq(new_seq),
+                                          id="background_seq_{0:d}".format(i),
+                                          name=record.id))
     print(
         "Shuffled {} sequence(s) {} times while conserving \
         k-mer frequency for k = {}.".format(

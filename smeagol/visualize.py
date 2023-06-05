@@ -12,7 +12,7 @@ from deeplift.visualization.viz_sequence import plot_weights_given_ax
 import scipy.stats as stats
 
 
-def ppm_logo(probs, title="", figsize=(5,2)):
+def ppm_logo(probs, title="", figsize=(5, 2)):
     """Function to visualize the sequence logo of a PPM.
 
     Args:
@@ -36,14 +36,14 @@ def ppm_logo(probs, title="", figsize=(5,2)):
         ax.set_title(title)
     # Plot logo
     plot_weights_given_ax(ax=ax, array=probs_scaled,
-        height_padding_factor=0.1,
-        length_padding=0.01,
-        subticks_frequency=1,
-        highlight={})
+                          height_padding_factor=0.1,
+                          length_padding=0.01,
+                          subticks_frequency=1,
+                          highlight={})
     plt.show()
 
 
-def pwm_logo(weights, title="", figsize=(5,2)):
+def pwm_logo(weights, title="", figsize=(5, 2)):
     """Function to visualize the sequence logo of a PWM.
 
     Args:
@@ -60,7 +60,7 @@ def pwm_logo(weights, title="", figsize=(5,2)):
     ppm_logo(ppm, title=title, figsize=figsize)
 
 
-def plot_pwm(pwm_df, Matrix_id, figsize=(5,2)):
+def plot_pwm(pwm_df, Matrix_id, figsize=(5, 2)):
     """Function to plot sequence logo from PWM
 
     Args:
@@ -76,7 +76,7 @@ def plot_pwm(pwm_df, Matrix_id, figsize=(5,2)):
     pwm_logo(weights=weights, title=Matrix_id, figsize=figsize)
 
 
-def plot_ppm(ppm_df, Matrix_id, height=15):
+def plot_ppm(ppm_df, Matrix_id, figsize=(5, 2)):
     """
     Function to plot sequence logo from PPM
 

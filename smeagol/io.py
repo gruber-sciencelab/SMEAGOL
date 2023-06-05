@@ -119,7 +119,7 @@ def read_pms_from_file(
     ends = np.append(starts[1:], len(pms))
 
     # Get matrix IDs and values
-    pm_ids = [l[0].strip(">") for l in pms if l[0].startswith(">")]
+    pm_ids = [pm[0].strip(">") for pm in pms if pm[0].startswith(">")]
 
     # Check that matrix lengths match values supplied in the file
     if check_lens:
