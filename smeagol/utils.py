@@ -34,6 +34,17 @@ def _equals(x, y, eps=1e-4):
 
 
 def shuffle_records(records, simN, simK=2, out_file=None, seed=1):
+    """Function to shuffle sequences.
+    Args:
+        records (list): list of seqRecord objects
+        simN (int): Number of times to shuffle
+        simK (int): k-mer frequency to conserve, either 1 or 2
+        out_file (str): Path to output file (optional)
+        seed (int): Random seed
+    Returns:
+        shuf_records (list): list of shuffled sequences
+        Writes shuf_records to file if out_file provided.
+    """
     shuf_records = []
     # Shuffle each record
     for record in records:
