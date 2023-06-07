@@ -1,62 +1,82 @@
 # General imports
 import numpy as np
 import pandas as pd
+from .matrices import pwm_to_ppm, position_wise_ic
 
 # Viz imports
 from matplotlib import pyplot as plt
 import seaborn as sns
-import weblogo as wl
-import IPython.display as ipd
-import seqlogo
+from deeplift.visualization.viz_sequence import plot_weights_given_ax
 
 # Stats imports
 import scipy.stats as stats
 
 
-def pwm_logo(weights, title="", height=15):
+def ppm_logo(probs, title="", figsize=(5, 2)):
+    """Function to visualize the sequence logo of a PPM.
+
+    Args:
+        probs (np.array): array containing probabilities
+        title (str): Title of the logo.
+        figsize (tuple): (width, height)
+
+    Returns:
+        PPM logo
+
+    """
+    # Calculate IC
+    ic = position_wise_ic(probs)
+    # Scale probabilities by IC
+    probs_scaled = probs*np.expand_dims(ic, 1)
+    # Create figure and axes
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    # Set title
+    if title != "":
+        ax.set_title(title)
+    # Plot logo
+    plot_weights_given_ax(ax=ax, array=probs_scaled,
+                          height_padding_factor=0.1,
+                          length_padding=0.01,
+                          subticks_frequency=1,
+                          highlight={})
+    plt.show()
+
+
+def pwm_logo(weights, title="", figsize=(5, 2)):
     """Function to visualize the sequence logo of a PWM.
 
     Args:
         weights (np.array): array containing PWM weight values
         title (str): Title of the logo.
-        height (int): Height of the plot
+        figsize (tuple): (width, height)
 
     Returns:
         PWM logo
 
     """
-    pm = np.exp2(weights) / 4
-    pm = seqlogo.Ppm(pm / np.expand_dims(np.sum(pm, axis=1), 1))
-    options = wl.LogoOptions(
-        unit_name="bits",
-        color_scheme=wl.std_color_schemes["classic"],
-        show_fineprint=False,
-        stack_width=height,
-    )
-    options.logo_title = title
-    out = wl.formatters["png"](pm, wl.LogoFormat(pm, options))
-    return ipd.Image(out)
+    # Convert PWM to PPM
+    ppm = pwm_to_ppm(weights)
+    ppm_logo(ppm, title=title, figsize=figsize)
 
 
-def plot_pwm(pwm_df, Matrix_id, height=15):
+def plot_pwm(pwm_df, Matrix_id, figsize=(5, 2)):
     """Function to plot sequence logo from PWM
 
     Args:
         pwm_df (pd.DataFrame): Dataframe containing cols weight, Matrix_id
         Matrix_id: ID of PWM to plot (will be used as logo title)
-        height (int): Height of the plot
+        figsize (tuple): (width, height)
 
     Returns:
         Plots PWM
 
     """
-    weights = pwm_df.weights.values[pwm_df.Matrix_id == Matrix_id]
-    logo = pwm_logo(weights=weights[0], title=Matrix_id, height=height)
-
-    return logo
+    weights = pwm_df.weights.values[pwm_df.Matrix_id == Matrix_id][0]
+    pwm_logo(weights=weights, title=Matrix_id, figsize=figsize)
 
 
-def plot_ppm(ppm_df, Matrix_id, height=15):
+def plot_ppm(ppm_df, Matrix_id, figsize=(5, 2)):
     """
     Function to plot sequence logo from PPM
 
@@ -68,17 +88,8 @@ def plot_ppm(ppm_df, Matrix_id, height=15):
         Plots PPM
 
     """
-    probs = ppm_df.probs.values[ppm_df.Matrix_id == Matrix_id]
-    pm = seqlogo.Ppm(probs[0])
-    options = wl.LogoOptions(
-        unit_name="bits",
-        color_scheme=wl.std_color_schemes["classic"],
-        show_fineprint=False,
-        stack_width=height,
-    )
-    options.logo_title = Matrix_id
-    out = wl.formatters["png"](pm, wl.LogoFormat(pm, options))
-    return ipd.Image(out)
+    probs = ppm_df.probs.values[ppm_df.Matrix_id == Matrix_id][0]
+    ppm_logo(probs=probs, title=Matrix_id, figsize=figsize)
 
 
 def plot_binned_count_dist(

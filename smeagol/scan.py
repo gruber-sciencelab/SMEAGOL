@@ -301,7 +301,7 @@ def _find_sites_in_groups(
             stats = (
                 output["counts"]
                 .groupby(["Matrix_id", "width", "sense"])
-                .agg([len, np.mean, np.std])
+                .num.agg([len, np.mean, np.std])
                 .reset_index()
             )
             stats.columns = ["Matrix_id", "width", "sense", "len", "avg", "sd"]

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from ushuffle import shuffle, set_seed
+import random
+from deeplift.dinuc_shuffle import dinuc_shuffle
 
 # Biopython imports
 from Bio.Seq import Seq
@@ -32,33 +33,42 @@ def _equals(x, y, eps=1e-4):
         return abs(x - y) < eps
 
 
-def shuffle_records(records, simN, simK, out_file=None, seed=1):
+def shuffle_records(records, simN, simK=2, out_file=None, seed=1):
     """Function to shuffle sequences.
-
     Args:
         records (list): list of seqRecord objects
         simN (int): Number of times to shuffle
-        simK (int): k-mer frequency to conserve
+        simK (int): k-mer frequency to conserve, either 1 or 2
         out_file (str): Path to output file (optional)
-
+        seed (int): Random seed
     Returns:
         shuf_records (list): list of shuffled sequences
         Writes shuf_records to file if out_file provided.
-
     """
     shuf_records = []
-
-    if seed is not None:
-        set_seed(seed)
-
     # Shuffle each record
     for record in records:
-        for n in range(simN):
-            new_seq = shuffle(str.encode(record.seq.__str__()), simK).decode()
-            new_seq = SeqRecord(Seq(new_seq),
-                                id="background_seq_{0:d}".format(n))
-            new_seq.name = record.id
-            shuf_records.append(new_seq)
+        # Get sequence
+        seq = record.seq.__str__()
+        # Shuffle
+        if simK == 2:
+            new_seqs = dinuc_shuffle(seq, num_shufs=simN,
+                                     rng=np.random.RandomState(seed))
+        elif simK == 1:
+            random.seed(seed)
+            new_seqs = []
+            for i in range(simN):
+                shuffled = [base for base in seq].copy()
+                random.shuffle(shuffled)
+                new_seqs.append(''.join(shuffled))
+        else:
+            raise ValueError("simK must be 1 or 2.")
+
+        # Convert to seqrecord format
+        for i, new_seq in enumerate(new_seqs):
+            shuf_records.append(SeqRecord(Seq(new_seq),
+                                          id="background_seq_{0:d}".format(i),
+                                          name=record.id))
     print(
         "Shuffled {} sequence(s) {} times while conserving \
         k-mer frequency for k = {}.".format(
