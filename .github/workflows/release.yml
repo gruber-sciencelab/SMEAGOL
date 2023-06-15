@@ -29,9 +29,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: publish-to-conda
-      uses: maxibor/conda-package-publish-action@v1.1
+      uses: uibcdf/action-build-and-upload-conda-packages@v1.2.0
       with:
-        subDir: '.'
-        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
+        meta_yaml_dir: '.'
+        python-version: '3.8'
+        platform_all: true
+        user: GSL_tools
+        token: ${{ secrets.ANACONDA_TOKEN }}
