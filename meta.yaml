@@ -13,13 +13,12 @@ build:
   script: python -m pip install --no-deps .
 
 channels:
-  - bioconda
   - conda-forge
-  - anaconda
+  - bioconda
 
 requirements:
   host:
-    - python >=3.7
+    - python >=3.8
     - pip >=22.1.2
   run:
     - biopython>=1.79
