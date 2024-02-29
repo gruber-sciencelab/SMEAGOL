@@ -120,10 +120,13 @@ def position_wise_ic(probs):
 # Functions to convert matrix types
 
 
-def ppm_to_pwm(probs):
+def ppm_to_pwm(probs, pseudocount=0.0001):
     """Function to convert a valid PPM into a PWM, using
     the formula: PWM = log2(PPM/B), where the background
-    probability B is set to 0.25.
+    probability B is set to 0.25. The pseudocount specifies
+    by which value the whole ppm should be incremented
+    in order to convert to a pwm to avoid log2(0),
+    if the ppm contains any 0 entries.
 
     Args:
         probs (np.array): Numpy array containing PPM probability values
@@ -134,6 +137,16 @@ def ppm_to_pwm(probs):
 
     """
     check_ppm(probs)
+    #if there is a 0 entry in the ppm, add the pseudocount and normalize
+    #such that all rows add to 1, but to get rid of any 0 entries.
+    #This is to avoid taking log2(0) which returns -inf
+    #This will change the matrix slightly
+    #imo, it ist best to do this check and adjustment when reading in the ppm
+    #i did it here for now because it serves my purpose
+    if (probs == 0).any():
+        probs = probs+pseudocount
+        probs = probs / probs.sum(axis=1, keepdims=True)
+
     return np.log2(probs / 0.25)
 
 
@@ -551,3 +564,40 @@ def cluster_pms(df, n_clusters, sims=None, weight_col="weights"):
     ]
     result = {"clusters": cluster_ids, "reps": reps, "min_ncorr": min_ncorrs}
     return result
+
+
+#I added this function because it was missing in this module
+#Please remove again, if it should not be here
+def get_rep_mats(sel_pwms, max_clusters=5, threshold=.2):
+    """Function to cluster position matrices based on a specified threshold. 
+    A distance matrix between the matrices is computed using the normalized Pearson
+    correlation metric and agglomerative clustering is used to
+    find clusters. `choose_representative_pm` is called to
+    identify a representative matrix from each cluster.
+
+    Args:
+        df (pandas df): Dataframe containing position matrix values and IDs.
+        n_clusters (int): Number of clusters
+        sims (np.array): pairwise similarities between all matrices in pwms
+        weight_col(str): column in pwms that contains matrix values.
+
+    Returns:
+        result: dictionary containing cluster labels, representative
+                matrix IDs, and minimum pairwise similarity within each
+                cluster
+
+    """
+    choice = None
+    n_clusters = 1
+    min_ncorr = np.nanmin(pairwise_ncorrs(list(sel_pwms.weights)))
+
+    if min_ncorr > threshold:
+        choice = {'reps': choose_representative_pm(sel_pwms),
+                  'min_ncorr': min_ncorr}
+    else:
+        while ((n_clusters < max_clusters) & (min_ncorr <= threshold)):
+            n_clusters += 1
+            choice = cluster_pms(sel_pwms, n_clusters=n_clusters)
+            min_ncorr = np.min(choice['min_ncorr'])
+
+    return choice
