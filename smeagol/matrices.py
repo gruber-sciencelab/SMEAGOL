@@ -413,10 +413,15 @@ def pairwise_ncorrs(mats):
     for i, j in combins:
         if i != j:
             # Calculate similarity between combinations of the matrices and their RCs
-            corrs = [ncorr(mat1, mat2) for mat1, mat2 in [[mats[i], mats[j]],
-                                                        [reverse_complement(mats[i]), mats[j]],
-                                                        [mats[i], reverse_complement(mats[j])],
-                                                        [reverse_complement(mats[i]), reverse_complement(mats[j])]]]
+            corrs = [
+                ncorr(mat1, mat2)
+                for mat1, mat2 in [
+                    [mats[i], mats[j]],
+                    [reverse_complement(mats[i]), mats[j]],
+                    [mats[i], reverse_complement(mats[j])],
+                    [reverse_complement(mats[i]), reverse_complement(mats[j])],
+                ]
+            ]
             # Save the maximum similarity
             sims[i, j] = sims[j, i] = max(corrs)
 
@@ -432,8 +437,7 @@ def pairwise_ncorrs(mats):
 
 
 def choose_representative_pm(
-    df, sims=None, maximize="median", weight_col="weights",
-    matrix_type="PWM"
+    df, sims=None, maximize="median", weight_col="weights", matrix_type="PWM"
 ):
     """Function to choose a representative position matrix
     from a group. If 2 matrices are supplied, the one with
@@ -539,6 +543,7 @@ def cluster_pms(df, n_clusters=None, similarity=None, sims=None, weight_col="wei
     correlation metric and agglomerative clustering is used to
     find clusters. `choose_representative_pm` is called to
     identify a representative matrix from each cluster.
+    Set either number of clusters or similarity threshold.
 
     Args:
         df (pandas df): Dataframe containing position matrix values and IDs.
@@ -575,24 +580,24 @@ def cluster_pms(df, n_clusters=None, similarity=None, sims=None, weight_col="wei
     else:
         # Cluster using similarity threshold
         cluster_ids = (
-             AgglomerativeClustering(
-                n_clusters = None,
+            AgglomerativeClustering(
+                n_clusters=None,
                 affinity="precomputed",
                 # Convert similarity threhold to distance threshold
-                distance_threshold = 1 - similarity,
+                distance_threshold=1 - similarity,
                 linkage="complete",
-                compute_distances=False
-            ).fit(1 - sims)
+                compute_distances=False,
+            )
+            .fit(1 - sims)
             .labels_
         )
     # Choose representative matrix from each cluster
     reps = choose_cluster_representative_pms(
-        df, sims=sims, clusters=cluster_ids, maximize="median",
-        weight_col=weight_col
+        df, sims=sims, clusters=cluster_ids, maximize="median", weight_col=weight_col
     )
     min_ncorrs = [
         np.min(sims[cluster_ids == i, :][:, cluster_ids == i])
-        for i in range(max(cluster_ids))
+        for i in range(max(cluster_ids) + 1)
     ]
     result = {"clusters": cluster_ids, "reps": reps, "min_ncorr": min_ncorrs}
     return result
