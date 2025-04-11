@@ -221,6 +221,28 @@ def trim_ppm(probs, frac_threshold):
     return result
 
 
+def reverse_complement(mat):
+    """Function to get the reverse complement of a matrix.
+    The reverse complement is calculated by reversing the
+    matrix and swapping the columns.
+
+    Args:
+        mat (np.array): Numpy array containing motif values.
+        Expected column order is [A, C, G, T].
+
+    Returns:
+        result (np.array): Numpy array containing the reverse
+                           complement of the input matrix.
+
+    """
+    rc = mat[::-1, :]
+    rc[:, 0] = mat[:, 3]
+    rc[:, 1] = mat[:, 2]
+    rc[:, 2] = mat[:, 1]
+    rc[:, 3] = mat[:, 0]
+    return rc
+
+
 # Functions to calculate similarity between matrices
 
 
@@ -390,7 +412,13 @@ def pairwise_ncorrs(mats):
     sims = np.zeros(shape=(len(mats), len(mats)))
     for i, j in combins:
         if i != j:
-            sims[i, j] = sims[j, i] = ncorr(mats[i], mats[j])
+            # Calculate similarity between combinations of the matrices and their RCs
+            corrs = [ncorr(mat1, mat2) for mat1, mat2 in [[mats[i], mats[j]],
+                                                        [reverse_complement(mats[i]), mats[j]],
+                                                        [mats[i], reverse_complement(mats[j])],
+                                                        [reverse_complement(mats[i]), reverse_complement(mats[j])]]]
+            # Save the maximum similarity
+            sims[i, j] = sims[j, i] = max(corrs)
 
     # Set diagonal values to 1
     for i in range(len(mats)):
@@ -505,7 +533,7 @@ def choose_cluster_representative_pms(
     return representatives
 
 
-def cluster_pms(df, n_clusters, sims=None, weight_col="weights"):
+def cluster_pms(df, n_clusters=None, similarity=None, sims=None, weight_col="weights"):
     """Function to cluster position matrices. A distance matrix
     between the matrices is computed using the normalized Pearson
     correlation metric and agglomerative clustering is used to
@@ -515,6 +543,7 @@ def cluster_pms(df, n_clusters, sims=None, weight_col="weights"):
     Args:
         df (pandas df): Dataframe containing position matrix values and IDs.
         n_clusters (int): Number of clusters
+        similarity (float): minumum within-cluster similarity threshold [0-1]
         sims (np.array): pairwise similarities between all matrices in pwms
         weight_col(str): column in pwms that contains matrix values.
 
@@ -524,22 +553,38 @@ def cluster_pms(df, n_clusters, sims=None, weight_col="weights"):
                 cluster
 
     """
+    if n_clusters is None and similarity is None:
+        raise ValueError("Please provide either n_clusters or similarity threshold.")
+
     # Get pairwise similarities between PMs
     if sims is None:
         sims = pairwise_ncorrs(list(df[weight_col]))
-
     # Cluster using agglomerative clustering
-    cluster_ids = (
-        AgglomerativeClustering(
-            n_clusters=n_clusters,
-            affinity="precomputed",
-            distance_threshold=None,
-            linkage="complete",
+    if similarity is None:
+        # Cluster using number of clusters
+        cluster_ids = (
+            AgglomerativeClustering(
+                n_clusters=n_clusters,
+                affinity="precomputed",
+                distance_threshold=None,
+                linkage="complete",
+            )
+            .fit(2 - sims)
+            .labels_
         )
-        .fit(2 - sims)
-        .labels_
-    )
-
+    else:
+        # Cluster using similarity threshold
+        cluster_ids = (
+             AgglomerativeClustering(
+                n_clusters = None,
+                affinity="precomputed",
+                # Convert similarity threhold to distance threshold
+                distance_threshold = 1 - similarity,
+                linkage="complete",
+                compute_distances=False
+            ).fit(1 - sims)
+            .labels_
+        )
     # Choose representative matrix from each cluster
     reps = choose_cluster_representative_pms(
         df, sims=sims, clusters=cluster_ids, maximize="median",
@@ -547,7 +592,7 @@ def cluster_pms(df, n_clusters, sims=None, weight_col="weights"):
     )
     min_ncorrs = [
         np.min(sims[cluster_ids == i, :][:, cluster_ids == i])
-        for i in range(n_clusters)
+        for i in range(max(cluster_ids))
     ]
     result = {"clusters": cluster_ids, "reps": reps, "min_ncorr": min_ncorrs}
     return result
