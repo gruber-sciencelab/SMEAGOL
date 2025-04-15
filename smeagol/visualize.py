@@ -12,13 +12,14 @@ from deeplift.visualization.viz_sequence import plot_weights_given_ax
 import scipy.stats as stats
 
 
-def ppm_logo(probs, title="", figsize=(5, 2)):
+def ppm_logo(probs, title="", figsize=(5, 2), fileName=""):
     """Function to visualize the sequence logo of a PPM.
 
     Args:
         probs (np.array): array containing probabilities
         title (str): Title of the logo.
         figsize (tuple): (width, height)
+        fileName (str): path for saving the plot, will not save if empty
 
     Returns:
         PPM logo
@@ -40,16 +41,19 @@ def ppm_logo(probs, title="", figsize=(5, 2)):
                           length_padding=0.01,
                           subticks_frequency=1,
                           highlight={})
+    if not fileName=="":
+        plt.savefig(fileName)
     plt.show()
 
 
-def pwm_logo(weights, title="", figsize=(5, 2)):
+def pwm_logo(weights, title="", figsize=(5, 2), fileName = ""):
     """Function to visualize the sequence logo of a PWM.
 
     Args:
         weights (np.array): array containing PWM weight values
         title (str): Title of the logo.
         figsize (tuple): (width, height)
+        fileName (str): path for saving the plot, will not save if empty
 
     Returns:
         PWM logo
@@ -57,39 +61,41 @@ def pwm_logo(weights, title="", figsize=(5, 2)):
     """
     # Convert PWM to PPM
     ppm = pwm_to_ppm(weights)
-    ppm_logo(ppm, title=title, figsize=figsize)
+    ppm_logo(ppm, title=title, figsize=figsize, fileName=fileName)
 
 
-def plot_pwm(pwm_df, Matrix_id, figsize=(5, 2)):
+def plot_pwm(pwm_df, Matrix_id, figsize=(5, 2), fileName = ""):
     """Function to plot sequence logo from PWM
 
     Args:
         pwm_df (pd.DataFrame): Dataframe containing cols weight, Matrix_id
         Matrix_id: ID of PWM to plot (will be used as logo title)
         figsize (tuple): (width, height)
+        fileName (str): path for saving the plot, will not save if empty
 
     Returns:
         Plots PWM
 
     """
     weights = pwm_df.weights.values[pwm_df.Matrix_id == Matrix_id][0]
-    pwm_logo(weights=weights, title=Matrix_id, figsize=figsize)
+    pwm_logo(weights=weights, title=Matrix_id, figsize=figsize, fileName=fileName)
 
 
-def plot_ppm(ppm_df, Matrix_id, figsize=(5, 2)):
+def plot_ppm(ppm_df, Matrix_id, figsize=(5, 2), fileName = ""):
     """
     Function to plot sequence logo from PPM
 
     Args:
         ppm_df (pd.DataFrame): Dataframe containing cols probs, Matrix_id
         Matrix_id: ID of PWM to plot
+        fileName (str): path for saving the plot, will not save if empty
 
     Returns:
         Plots PPM
 
     """
     probs = ppm_df.probs.values[ppm_df.Matrix_id == Matrix_id][0]
-    ppm_logo(probs=probs, title=Matrix_id, figsize=figsize)
+    ppm_logo(probs=probs, title=Matrix_id, figsize=figsize, fileName=fileName)
 
 
 def plot_binned_count_dist(
