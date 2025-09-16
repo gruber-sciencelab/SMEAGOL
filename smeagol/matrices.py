@@ -235,7 +235,7 @@ def reverse_complement(mat):
                            complement of the input matrix.
 
     """
-    rc = mat[::-1, :]
+    rc = mat[::-1, :].copy()
     rc[:, 0] = mat[:, 3]
     rc[:, 1] = mat[:, 2]
     rc[:, 2] = mat[:, 1]
